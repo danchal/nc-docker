@@ -1,3 +1,5 @@
+# [UPDATED EXAMPLE WITH COLLABORA AND EXTRAS](.examples/docker-compose/with-nginx-proxy/mariadb-cron-redis/fpm)
+
 # What is Nextcloud?
 
 [![Build Status update.sh](https://doi-janky.infosiftr.net/job/update.sh/job/nextcloud/badge/icon)](https://doi-janky.infosiftr.net/job/update.sh/job/nextcloud)

@@ -7,8 +7,10 @@ services:
     restart: always
     volumes:
       - db:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
     environment:
-      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     env_file:
       - db.env
 
@@ -21,34 +23,63 @@ services:
     restart: always
     volumes:
       - nextcloud:/var/www/html
+      - /etc/localtime:/etc/localtime:ro
     environment:
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
       - MYSQL_HOST=db
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     env_file:
       - db.env
     depends_on:
       - db
       - redis
 
+  collabora:
+    image: collabora/code
+    restart: always
+    expose:
+      - 9980
+    cap_add:
+      - MKNOD
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - domain=${DOMAIN_COLLABORA}
+      - dictionaries=${DICTIONARIES_COLLABORA}
+      - username=${USERNAME_COLLABORA}
+      - password=${PASSWORD_COLLABORA}
+      - VIRTUAL_HOST=${SUBDOMAIN_COLLABORA}
+      - VIRTUAL_PORT=9980
+      - VIRTUAL_PROTO=https
+      - LETSENCRYPT_HOST=${SUBDOMAIN_COLLABORA}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    networks:
+      - proxy-tier
+
   web:
     build: ./web
     restart: always
     volumes:
       - nextcloud:/var/www/html:ro
+      - /etc/localtime:/etc/localtime:ro
     environment:
-      - VIRTUAL_HOST=
-      - LETSENCRYPT_HOST=
-      - LETSENCRYPT_EMAIL=
-    depends_on:
-      - app
+      - VIRTUAL_HOST=${SUBDOMAIN_NEXTCLOUD}
+      - LETSENCRYPT_HOST=${SUBDOMAIN_NEXTCLOUD}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     networks:
       - proxy-tier
       - default
+    depends_on:
+      - app
 
   cron:
     build: ./app
     restart: always
     volumes:
       - nextcloud:/var/www/html
+      - /etc/localtime:/etc/localtime:ro
     entrypoint: /cron.sh
     depends_on:
       - db
@@ -67,6 +98,7 @@ services:
       - vhost.d:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - proxy-tier
 
@@ -78,10 +110,33 @@ services:
       - vhost.d:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - proxy-tier
     depends_on:
       - proxy
+
+  signal-web-gateway:
+    image: registry.gitlab.com/morph027/signal-web-gateway:master
+    restart: always
+    ports:
+      - 5000:5000
+    volumes:
+      - signal:/signal
+      - /etc/localtime:/etc/localtime:ro
+
+  cloudflare-ddns:
+    image: joshava/cloudflare-ddns
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - ZONE=${CLOUDFLARE_ZONE}
+      - HOST=${CLOUDFLARE_HOST}
+      - EMAIL=${CLOUDFLARE_EMAIL}
+      - API=${CLOUDFLARE_API}
+      - TTL=1
+      - PROXY=false
 
 volumes:
   db:
@@ -89,6 +144,7 @@ volumes:
   certs:
   vhost.d:
   html:
+  signal:
 
 networks:
   proxy-tier:

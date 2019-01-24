@@ -1,0 +1,52 @@
+# Features
+        Nextcloud
+        Cron
+        Redis
+        fpm
+        Nginx
+        Letsencrypt
+        Collabora
+        Signal Web Gateway
+        Cloudflare DDNS
+
+## Environment variables
+1. Copy env.example and rename to .env .
+2. Edit .env as required.
+
+## Docker Build
+1. Build and run the docker compose script.
+
+        $ docker-compose build --pull
+        $ docker-compose up -d
+
+## Signal Web Gateway Configuration and 2FA Installation
+[https://gitlab.com/morph027/signal-web-gateway](https://gitlab.com/morph027/signal-web-gateway)
+
+1. The signal-web-gateway container will fail due to not being registered yet.
+1. Stop the signal-web-gateway container.
+
+        $ docker stop <signal web gateway>
+
+1. Edit Signal config file, set the telephone number.
+
+        $ vi <signal docker volume>/_data/.config/config.yml
+
+1. Register your signal number by running a disposable signal-web-gateway container in an interactive mode against the signal docker volume.
+
+        $ docker run --rm -it -v <signal docker volume>:/signal registry.gitlab.com/morph027/signal-web-gateway:master register
+
+1. Restart signal-web-gateway container.
+
+        $ docker restart <signal web gateway>
+
+1. Install Two-Factor Gateway app in Nextcloud.
+
+1. Configure Two-Factor Gateway app.
+
+        $ docker-compose exec --user www-data app php occ config:app:set twofactor_gateway sms_provider --value "signal"
+
+1. Configure the Signal Web Gateway. (URL=signal-web-gateway:5000)
+
+        $ docker-compose exec --user www-data app php occ twofactorauth:gateway:configure signal
+
+1. Using Nextcloud, enable 2FA for a user.

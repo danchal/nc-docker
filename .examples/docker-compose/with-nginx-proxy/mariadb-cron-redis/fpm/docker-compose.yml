@@ -111,6 +111,8 @@ services:
       - html:/usr/share/nginx/html
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/localtime:/etc/localtime:ro
+    environment:
+      - ACME_CA_URI=${ACME_CA_URI}
     networks:
       - proxy-tier
     depends_on:
@@ -119,8 +121,8 @@ services:
   signal-web-gateway:
     image: registry.gitlab.com/morph027/signal-web-gateway:master
     restart: always
-    ports:
-      - 5000:5000
+    expose:
+      - 5000
     volumes:
       - signal:/signal
       - /etc/localtime:/etc/localtime:ro

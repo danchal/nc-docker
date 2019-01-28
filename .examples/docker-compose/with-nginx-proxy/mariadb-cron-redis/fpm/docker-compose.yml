@@ -36,38 +36,12 @@ services:
       - db
       - redis
 
-  collabora:
-    image: collabora/code
-    restart: always
-    expose:
-      - 9980
-    cap_add:
-      - MKNOD
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - domain=${DOMAIN_COLLABORA}
-      - dictionaries=${DICTIONARIES_COLLABORA}
-      - username=${USERNAME_COLLABORA}
-      - password=${PASSWORD_COLLABORA}
-      - VIRTUAL_HOST=${SUBDOMAIN_COLLABORA}
-      - VIRTUAL_PORT=9980
-      - VIRTUAL_PROTO=https
-      - LETSENCRYPT_HOST=${SUBDOMAIN_COLLABORA}
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
-    networks:
-      - proxy-tier
-
-  web:
+  nextcloud:
     build: ./web
     restart: always
     volumes:
       - nextcloud:/var/www/html:ro
       - /etc/localtime:/etc/localtime:ro
-    environment:
-      - VIRTUAL_HOST=${SUBDOMAIN_NEXTCLOUD}
-      - LETSENCRYPT_HOST=${SUBDOMAIN_NEXTCLOUD}
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     networks:
       - proxy-tier
       - default
@@ -85,38 +59,51 @@ services:
       - db
       - redis
 
-  proxy:
-    build: ./proxy
+  collabora:
+    image: collabora/code
+    restart: always
+    expose:
+      - 9980
+    cap_add:
+      - MKNOD
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - domain=${DOMAIN_COLLABORA}
+      - dictionaries=${DICTIONARIES_COLLABORA}
+      - username=${USERNAME_COLLABORA}
+      - password=${PASSWORD_COLLABORA}
+    networks:
+      - proxy-tier
+
+  letsencrypt:
+    container_name: letsencrypt
+    build:
+      context: ./proxy
+      args:
+        dns_cloudflare_email: ${CLOUDFLARE_EMAIL}
+        dns_cloudflare_api_key: ${CLOUDFLARE_API}
     restart: always
     ports:
       - 80:80
       - 443:443
-    labels:
-      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    cap_add:
+      - NET_ADMIN
     volumes:
-      - certs:/etc/nginx/certs:ro
-      - vhost.d:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - /etc/localtime:/etc/localtime:ro
-    networks:
-      - proxy-tier
-
-  letsencrypt-companion:
-    image: jrcs/letsencrypt-nginx-proxy-companion
-    restart: always
-    volumes:
-      - certs:/etc/nginx/certs
-      - vhost.d:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /etc/localtime:/etc/localtime:ro
+      - config:/config
     environment:
-      - ACME_CA_URI=${ACME_CA_URI}
+      - PGID=${DOCKER_PGID}
+      - PUID=${DOCKER_PUID}
+      - EMAIL=${LE_EMAIL}
+      - URL=${LE_URL}
+      - SUBDOMAINS=${LE_SUBDOMAINS}
+      - ONLY_SUBDOMAINS=${LE_ONLY_SUBDOMAINS}
+      - VALIDATION=dns
+      - DNSPLUGIN=cloudflare
+      - STAGING=${LE_STAGING}
+      - TZ=${LE_TZ}
     networks:
       - proxy-tier
-    depends_on:
-      - proxy
 
   signal-web-gateway:
     image: registry.gitlab.com/morph027/signal-web-gateway:master
@@ -143,9 +130,7 @@ services:
 volumes:
   db:
   nextcloud:
-  certs:
-  vhost.d:
-  html:
+  config:
   signal:
 
 networks:

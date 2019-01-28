@@ -19,7 +19,10 @@ services:
     restart: always
 
   app:
-    build: ./app
+    build:
+      context: ./app
+      args:
+        - nextcloud_subdomain=${SUBDOMAIN_NEXTCLOUD}
     restart: always
     volumes:
       - nextcloud:/var/www/html
@@ -35,28 +38,6 @@ services:
     depends_on:
       - db
       - redis
-
-  collabora:
-    image: collabora/code
-    restart: always
-    expose:
-      - 9980
-    cap_add:
-      - MKNOD
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - domain=${DOMAIN_COLLABORA}
-      - dictionaries=${DICTIONARIES_COLLABORA}
-      - username=${USERNAME_COLLABORA}
-      - password=${PASSWORD_COLLABORA}
-      - VIRTUAL_HOST=${SUBDOMAIN_COLLABORA}
-      - VIRTUAL_PORT=9980
-      - VIRTUAL_PROTO=https
-      - LETSENCRYPT_HOST=${SUBDOMAIN_COLLABORA}
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
-    networks:
-      - proxy-tier
 
   web:
     build: ./web
@@ -84,6 +65,28 @@ services:
     depends_on:
       - db
       - redis
+
+  collabora:
+    image: collabora/code
+    restart: always
+    expose:
+      - 9980
+    cap_add:
+      - MKNOD
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - domain=${DOMAIN_COLLABORA}
+      - dictionaries=${DICTIONARIES_COLLABORA}
+      - username=${USERNAME_COLLABORA}
+      - password=${PASSWORD_COLLABORA}
+      - VIRTUAL_HOST=${SUBDOMAIN_COLLABORA}
+      - VIRTUAL_PORT=9980
+      - VIRTUAL_PROTO=https
+      - LETSENCRYPT_HOST=${SUBDOMAIN_COLLABORA}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    networks:
+      - proxy-tier
 
   proxy:
     build: ./proxy

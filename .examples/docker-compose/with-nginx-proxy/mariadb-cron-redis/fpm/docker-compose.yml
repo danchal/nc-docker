@@ -77,7 +77,6 @@ services:
       - proxy-tier
 
   letsencrypt:
-    container_name: letsencrypt
     build:
       context: ./proxy
       args:

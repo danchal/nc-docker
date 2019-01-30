@@ -89,7 +89,7 @@ services:
     cap_add:
       - NET_ADMIN
     volumes:
-      - config:/config
+      - leconfig:/config
     environment:
       - PGID=${DOCKER_PGID}
       - PUID=${DOCKER_PUID}

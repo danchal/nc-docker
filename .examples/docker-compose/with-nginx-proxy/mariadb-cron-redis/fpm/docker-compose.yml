@@ -129,7 +129,7 @@ services:
 volumes:
   db:
   nextcloud:
-  config:
+  leconfig:
   signal:
 
 networks:

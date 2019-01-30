@@ -50,3 +50,10 @@
         $ docker-compose exec --user www-data app php occ twofactorauth:gateway:configure signal
 
 1. Using Nextcloud, enable 2FA for a user.
+
+## Collabora
+        https://collabora.example.com/hosting/discovery
+        https://collabora.example.com/loleaflet/dist/admin/admin.html
+
+# Notes
+1. Collabora will not work properly if using Letsencrypt test certificates

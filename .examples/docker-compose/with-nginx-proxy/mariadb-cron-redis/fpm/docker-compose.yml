@@ -121,15 +121,6 @@ services:
     depends_on:
       - proxy
 
-  signal-web-gateway:
-    image: registry.gitlab.com/morph027/signal-web-gateway:master
-    restart: always
-    expose:
-      - 5000
-    volumes:
-      - signal:/signal
-      - /etc/localtime:/etc/localtime:ro
-
   cloudflare-ddns:
     image: joshava/cloudflare-ddns
     restart: always
@@ -142,6 +133,15 @@ services:
       - API=${CLOUDFLARE_API}
       - TTL=1
       - PROXY=false
+
+  # signal-web-gateway:
+  #   image: registry.gitlab.com/morph027/signal-web-gateway:master
+  #   restart: always
+  #   expose:
+  #     - 5000
+  #   volumes:
+  #     - signal:/signal
+  #     - /etc/localtime:/etc/localtime:ro
 
 volumes:
   db:

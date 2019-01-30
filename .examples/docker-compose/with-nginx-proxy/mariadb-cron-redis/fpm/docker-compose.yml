@@ -19,7 +19,10 @@ services:
     restart: always
 
   app:
-    build: ./app
+    build:
+      context: ./app
+      args:
+        - nextcloud_subdomain=${SUBDOMAIN_NEXTCLOUD}
     restart: always
     volumes:
       - nextcloud:/var/www/html
@@ -104,14 +107,14 @@ services:
     networks:
       - proxy-tier
 
-  signal-web-gateway:
-    image: registry.gitlab.com/morph027/signal-web-gateway:master
-    restart: always
-    expose:
-      - 5000
-    volumes:
-      - signal:/signal
-      - /etc/localtime:/etc/localtime:ro
+  # signal-web-gateway:
+  #   image: registry.gitlab.com/morph027/signal-web-gateway:master
+  #   restart: always
+  #   expose:
+  #     - 5000
+  #   volumes:
+  #     - signal:/signal
+  #     - /etc/localtime:/etc/localtime:ro
 
   cloudflare-ddns:
     image: joshava/cloudflare-ddns

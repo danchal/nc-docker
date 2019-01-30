@@ -17,7 +17,7 @@ RUN set -ex; \
 
 # enable additional security header
 RUN set -ex; \
-    echo 'add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;' >> /defaults/ssl.conf; \
+    echo 'add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;' >> /defaults/ssl.conf
     #echo 'add_header X-Robots-Tag "none" always;' >> /defaults/ssl.conf
 
 # Optional additional headers

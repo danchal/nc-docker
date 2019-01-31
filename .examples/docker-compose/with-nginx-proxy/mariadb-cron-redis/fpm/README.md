@@ -52,7 +52,10 @@
 1. Using Nextcloud, enable 2FA for a user.
 
 ## Collabora
+Verify that all these url's work as expected
+
         https://collabora.example.com/hosting/discovery
+        https://collabora.example.com/hosting/capabilities
         https://collabora.example.com/loleaflet/dist/admin/admin.html
 
 # Notes

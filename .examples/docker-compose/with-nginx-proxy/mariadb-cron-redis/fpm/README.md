@@ -52,8 +52,22 @@
 1. Using Nextcloud, enable 2FA for a user.
 
 ## Collabora
+Verify that all these url's work as expected
+
         https://collabora.example.com/hosting/discovery
+        https://collabora.example.com/hosting/capabilities
         https://collabora.example.com/loleaflet/dist/admin/admin.html
 
+### Spinning Wheel or documents not opening
+When opening a document, if nothing happens or you get the spinning wheel:
+
+1. Are you using test certificates?
+1. Check the Nextcloud logs
+1. Did you recently change the DNS records?
+
+Try:
+
+1. Re-apply the Collabora Online Server settings in the Nextcloud application.
+1. Restart Collabora server.
+
 # Notes
-1. Collabora will not work properly if using Letsencrypt test certificates

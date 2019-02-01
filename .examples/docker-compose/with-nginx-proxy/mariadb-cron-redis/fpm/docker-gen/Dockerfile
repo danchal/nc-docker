@@ -1,7 +1,7 @@
 FROM jwilder/docker-gen
 
 # get latest version of proxy template
-# instead of returning a nice page, close connection for invalid requests
+# For invalid request,  close connection (444), instead of returning Service Unavailable (503)
 RUN set -ex; \
     mkdir -p /etc/docker-gen/templates; \ 
     \

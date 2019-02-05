@@ -89,7 +89,10 @@ services:
       - proxy-tier
 
   proxy:
-    build: ./proxy
+    build:
+      context: ./proxy
+      args:
+        - subdomain_collabora=${SUBDOMAIN_COLLABORA}
     restart: always
     ports:
       - 80:80
@@ -115,7 +118,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/localtime:/etc/localtime:ro
     environment:
-      - ACME_CA_URI=${ACME_CA_URI}
+      - ACME_CA_URI=${ACME_CA_URI:-https://acme-v01.api.letsencrypt.org/directory}
     networks:
       - proxy-tier
     depends_on:

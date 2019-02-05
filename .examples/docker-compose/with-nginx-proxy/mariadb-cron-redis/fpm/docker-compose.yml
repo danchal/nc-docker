@@ -1,4 +1,4 @@
-version: '3'
+version: '3.2'
 
 services:
   db:
@@ -146,9 +146,36 @@ services:
   #     - signal:/signal
   #     - /etc/localtime:/etc/localtime:ro
 
+  fail2ban:
+    build:
+      context: ./fail2ban
+    restart: always
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - fail2ban-db:/data/db
+      - nextcloud:/var/nextcloud:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - F2B_DEST_EMAIL=${F2B_DEST_EMAIL}
+      - F2B_SENDER=${F2B_SENDER}
+      - SSMTP_HOST=${SSMTP_HOST}
+      - SSMTP_PORT=${SSMTP_PORT}
+      - SSMTP_HOSTNAME=${SSMTP_HOSTNAME}
+      - SSMTP_USER=${SSMTP_USER}
+      - SSMTP_PASSWORD=${SSMTP_PASSWORD}
+      - SSMTP_TLS=${SSMTP_TLS}
+    env_file:
+      - ./fail2ban/fail2ban.env
+    depends_on:
+      - app
+
 volumes:
   db:
   nextcloud:
+  fail2ban-db:
   certs:
   vhost.d:
   html:

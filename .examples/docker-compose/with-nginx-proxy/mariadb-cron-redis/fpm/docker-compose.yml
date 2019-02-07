@@ -33,6 +33,7 @@ services:
       - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
       - MYSQL_HOST=db
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - REDIS_HOST=redis 
     env_file:
       - db.env
     depends_on:
@@ -49,11 +50,11 @@ services:
       - VIRTUAL_HOST=${SUBDOMAIN_NEXTCLOUD}
       - LETSENCRYPT_HOST=${SUBDOMAIN_NEXTCLOUD}
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    depends_on:
+      - app
     networks:
       - proxy-tier
       - default
-    depends_on:
-      - app
 
   cron:
     build: ./app

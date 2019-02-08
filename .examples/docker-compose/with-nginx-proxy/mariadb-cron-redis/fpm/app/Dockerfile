@@ -7,8 +7,9 @@ RUN set -ex; \
     # set the nextcloud subdomain
     sed -i "s|nextcloud.example.com|$nextcloud_subdomain|g" /usr/src/nextcloud/config/proxy.config.php; \
     \
-    # create nextcloud data directory
+    # create nextcloud data directory and log (before docker mounts it as a directory)
     mkdir /data; \
+    touch /data/nextcloud.log; \
     chown -R www-data:root /data; \
     chmod -R g=u /data; \
     \

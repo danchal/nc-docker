@@ -15,8 +15,8 @@ RUN set -ex; \
     \
     # tune PHP-FPM
     { \
-        echo 'pm.max_children = 25'; \
-        echo 'pm.start_servers = 5'; \
-        echo 'pm.min_spare_servers = 2'; \
-        echo 'pm.max_spare_servers = 5'; \
+        echo 'pm.max_children = 50'; \
+        echo 'pm.start_servers = 6'; \
+        echo 'pm.min_spare_servers = 3'; \
+        echo 'pm.max_spare_servers = 10'; \
     } >> /usr/local/etc/php-fpm.d/www.conf

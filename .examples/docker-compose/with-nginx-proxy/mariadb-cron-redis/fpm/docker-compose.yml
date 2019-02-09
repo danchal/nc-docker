@@ -74,6 +74,7 @@ services:
     build:
       context: ./proxy
       args:
+        - subdomain_nextcloud=${SUBDOMAIN_NEXTCLOUD}
         - subdomain_collabora=${SUBDOMAIN_COLLABORA}
     restart: always
     ports:

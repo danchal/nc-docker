@@ -70,28 +70,6 @@ services:
       - db
       - redis
 
-  collabora:
-    image: collabora/code
-    restart: always
-    expose:
-      - 9980
-    cap_add:
-      - MKNOD
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - domain=${DOMAIN_COLLABORA}
-      - dictionaries=${DICTIONARIES_COLLABORA}
-      - username=${USERNAME_COLLABORA}
-      - password=${PASSWORD_COLLABORA}
-      - VIRTUAL_HOST=${SUBDOMAIN_COLLABORA}
-      - VIRTUAL_PORT=9980
-      - VIRTUAL_PROTO=https
-      - LETSENCRYPT_HOST=${SUBDOMAIN_COLLABORA}
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
-    networks:
-      - proxy-tier
-
   proxy:
     build:
       context: ./proxy
@@ -127,6 +105,28 @@ services:
       - proxy-tier
     depends_on:
       - proxy
+
+  collabora:
+    image: collabora/code
+    restart: always
+    expose:
+      - 9980
+    cap_add:
+      - MKNOD
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - domain=${DOMAIN_COLLABORA}
+      - dictionaries=${DICTIONARIES_COLLABORA}
+      - username=${USERNAME_COLLABORA}
+      - password=${PASSWORD_COLLABORA}
+      - VIRTUAL_HOST=${SUBDOMAIN_COLLABORA}
+      - VIRTUAL_PORT=9980
+      - VIRTUAL_PROTO=https
+      - LETSENCRYPT_HOST=${SUBDOMAIN_COLLABORA}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    networks:
+      - proxy-tier
 
   cloudflare-ddns:
     image: joshava/cloudflare-ddns

@@ -177,14 +177,15 @@ services:
     depends_on:
       - app
 
-  restic:
+  backup:
     build:
-      context: ./restic
+      context: ./backup
     restart: always
-    hostname: restic.${COMPOSE_PROJECT_NAME}
+    hostname: ${COMPOSE_PROJECT_NAME}
     volumes:
       - nextcloud-data:/data:ro
-      - restic:/mnt/restic
+      - backup:/backup
+      - backup-config:/config
       - /etc/localtime:/etc/localtime:ro
     environment:
       - RESTIC_REPOSITORY=${RESTIC_REPOSITORY}
@@ -204,7 +205,8 @@ volumes:
   vhost.d:
   html:
   signal:
-  restic:
+  backup:
+  backup-config:
 
 networks:
   proxy-tier:

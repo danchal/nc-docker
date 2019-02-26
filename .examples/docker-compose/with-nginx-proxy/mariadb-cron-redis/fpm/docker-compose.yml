@@ -177,6 +177,22 @@ services:
     depends_on:
       - app
 
+  backup:
+    build:
+      context: ./backup
+    restart: always
+    volumes:
+      - nextcloud-data:/data:ro
+      - backup-data:/backup
+      - backup-config:/root/.config
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - BACKUP_ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
+      - BACKUP_PRUNE=${BACKUP_PRUNE}
+      - BACKUP_NAME=${COMPOSE_PROJECT_NAME}
+    depends_on:
+      - app
+
 volumes:
   db:
   nextcloud:
@@ -186,6 +202,8 @@ volumes:
   vhost.d:
   html:
   signal:
+  backup-data:
+  backup-config:
 
 networks:
   proxy-tier:

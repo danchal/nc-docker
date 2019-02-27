@@ -183,16 +183,10 @@ services:
     restart: always
     hostname: ${COMPOSE_PROJECT_NAME}
     volumes:
-      - nextcloud-data:/data:ro
+      - nextcloud-data:/data/nextcloud:ro
       - backup:/backup
       - backup-config:/config
       - /etc/localtime:/etc/localtime:ro
-    environment:
-      - RESTIC_REPOSITORY=${RESTIC_REPOSITORY}
-      - RESTIC_PASSWORD=${RESTIC_PASSWORD}
-      - BACKUP_CRON=${RESTIC_BACKUP_CRON}
-      - RESTIC_FORGET_ARGS=${RESTIC_FORGET_ARGS}
-      - RESTIC_JOB_ARGS=${RESTIC_JOB_ARGS}
     depends_on:
       - app
 

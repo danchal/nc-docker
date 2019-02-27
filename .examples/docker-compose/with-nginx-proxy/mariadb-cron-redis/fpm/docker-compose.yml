@@ -177,6 +177,19 @@ services:
     depends_on:
       - app
 
+  backup:
+    build:
+      context: ./backup
+    restart: always
+    hostname: ${COMPOSE_PROJECT_NAME}
+    volumes:
+      - nextcloud-data:/data/nextcloud:ro
+      - backup:/backup
+      - backup-config:/config
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - app
+
 volumes:
   db:
   nextcloud:
@@ -186,6 +199,8 @@ volumes:
   vhost.d:
   html:
   signal:
+  backup:
+  backup-config:
 
 networks:
   proxy-tier:

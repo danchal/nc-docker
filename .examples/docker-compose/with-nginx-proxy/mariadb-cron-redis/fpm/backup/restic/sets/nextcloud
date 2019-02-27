@@ -1,4 +1,4 @@
-tag=main
+tag=nextcloud
 
 include_paths=(
     # This comment is ignored by Bash, so you can comment your configuration freely.

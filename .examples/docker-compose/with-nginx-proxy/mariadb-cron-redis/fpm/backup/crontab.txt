@@ -1,1 +1,3 @@
-* * * * * /script.sh
+* * * * * /backup-test.sh
+13 */1 * * * /backup-hourly.sh
+46 04 * * * /backup-daily.sh

@@ -4,8 +4,14 @@ FROM restic/restic
 ENV RCLONE_VERSION="current"
 ENV RCLONE_ARCH="amd64"
 
-# install build packages
+# use local copy of restic-runner until fixed
+COPY restic-runner /usr/bin
+
 RUN \
+    # add required packages for restic-runner
+    apk add --update coreutils bash bc && \
+    \
+    # install build packages
     apk add --no-cache --virtual=build-dependencies \
         wget \
         unzip && \
@@ -16,11 +22,8 @@ RUN \
     unzip /tmp/rclone-${RCLONE_VERSION}-linux-${RCLONE_ARCH}.zip && \
     mv /tmp/rclone-*-linux-${RCLONE_ARCH}/rclone /usr/bin && \
     \
-    # install bash
-    apk add bash && \
-    \
     # get restic-runner
-    wget -P /usr/bin https://raw.githubusercontent.com/alphapapa/restic-runner/master/restic-runner && \
+    #wget -P /usr/bin https://raw.githubusercontent.com/alphapapa/restic-runner/master/restic-runner && \
     chmod 755 /usr/bin/restic-runner && \
     \
     # cleanup
@@ -31,16 +34,22 @@ RUN \
         /var/tmp/* \
         /var/cache/apk/*
 
-COPY crontab.txt /crontab.txt
-COPY *.sh /
-RUN chmod 755 /*.sh
-RUN /usr/bin/crontab /crontab.txt
-
-RUN mkdir -p /root/.config/backup
-COPY restic /root/.config/backup/restic
-
 VOLUME ["/config", "/data"]
 
-RUN ln -fs /config/rclone /root/.config/
+# cron and config files
+COPY crontab.txt /crontab.txt
+COPY *.sh /
+COPY restic /root/.config/backup/restic
+
+RUN \
+    # set execute bit on all shell files
+    chmod 755 /*.sh && \
+    \
+    # setup crontab
+    usr/bin/crontab /crontab.txt && \
+    \
+    # create and link rclone config directory to container config volume
+    mkdir -p /root/.config/backup && \
+    ln -fs /config/rclone /root/.config/
 
 ENTRYPOINT ["/entrypoint.sh"]

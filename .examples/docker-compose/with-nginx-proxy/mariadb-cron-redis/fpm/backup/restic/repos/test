@@ -1,0 +1,12 @@
+export RESTIC_REPOSITORY=rclone:ftp:restic/nc
+export RESTIC_PASSWORD_FILE=/config/test.password
+
+du=false
+
+keep_policy=(
+    --keep-last 2
+    --keep-daily 7
+    --keep-weekly 8
+    --keep-monthly 12
+    --keep-yearly 10
+)

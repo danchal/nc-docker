@@ -10,8 +10,17 @@ ARG signal_client_number
 COPY restic-runner /usr/bin
 
 RUN \
-    # add required packages for restic-runner
-    apk add --update coreutils bash bc curl && \
+    # add required packages
+    apk add --update \
+        \
+        # restic-runner	
+        coreutils bash bc
+        \
+        # signal messenger
+        curl
+        \
+        # borg-backup
+        borgebackup && \
     \
     # install build packages
     apk add --no-cache --virtual=build-dependencies \

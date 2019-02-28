@@ -31,7 +31,7 @@ Now you can access Nextcloud at http://localhost:8080/ from your host system.
 ## Using the fpm image
 To use the fpm image you need an additional web server that can proxy http-request to the fpm-port of the container. For fpm connection this container exposes port 9000. In most cases you might want use another container or your host as proxy.
 If you use your host you can address your Nextcloud container directly on port 9000. If you use another container, make sure that you add them to the same docker network (via `docker run --network <NAME> ...` or a `docker-compose` file).
-In both cases you don't want to map the fpm port to you host.
+In both cases you don't want to map the fpm port to your host.
 
 ```console
 $ docker run -d nextcloud:fpm
@@ -45,7 +45,7 @@ By default this container uses SQLite for data storage, but the Nextcloud setup 
 ## Persistent data
 The Nextcloud installation and all data beyond what lives in the database (file uploads, etc) is stored in the [unnamed docker volume](https://docs.docker.com/engine/tutorials/dockervolumes/#adding-a-data-volume) volume `/var/www/html`. The docker daemon will store that data within the docker directory `/var/lib/docker/volumes/...`. That means your data is saved even if the container crashes, is stopped or deleted.
 
-To make your data persistent to upgrading and get access for backups is using named docker volume or mount a host folder. To achieve this you need one volume for your database container and Nextcloud.
+A named Docker volume or a mounted host directory should be used for upgrades and backups. To achieve this you need one volume for your database container and one for Nextcloud.
 
 Nextcloud:
 - `/var/www/html/` folder where all nextcloud data lives

@@ -188,7 +188,6 @@ services:
       - nextcloud-data:/data/nextcloud:ro
       - backup-config:/config
       - backup-local:/backup/local
-      - backup-ftp:/backup/ftp
       - /etc/localtime:/etc/localtime:ro
     depends_on:
       - app
@@ -204,7 +203,6 @@ volumes:
   signal:
   backup-config:
   backup-local:
-  backup-ftp:
 
 networks:
   proxy-tier:

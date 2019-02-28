@@ -1,6 +1,6 @@
 #!/bin/sh
 
-THE_DATE=$(date +%Y-%m-%d-%s)
+THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
 THE_TELEPHONE=+1234567890
 THE_COMMAND=$1
 THE_REPO=$2

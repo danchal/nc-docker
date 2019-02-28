@@ -11,16 +11,16 @@ COPY restic-runner /usr/bin
 
 RUN \
     # add required packages
-    apk add --update \
+    apk add --no-cache --update \
         \
         # restic-runner	
-        coreutils bash bc
+        coreutils bash bc \
         \
         # signal messenger
-        curl
+        curl \
         \
         # borg-backup
-        borgebackup && \
+        ca-certificates borgbackup fuse && \
     \
     # install build packages
     apk add --no-cache --virtual=build-dependencies \

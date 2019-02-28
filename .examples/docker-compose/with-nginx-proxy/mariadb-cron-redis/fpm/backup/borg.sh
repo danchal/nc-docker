@@ -1,11 +1,12 @@
 #!/bin/sh
-export BORG_DATE=$(date +%Y-%m-%d-%s)
+BORG_DATE=$(date +%Y-%m-%d-%s)
 
 echo "Starting Backup on ${BORG_DATE}"
-export BORG_PASSPHRASE="$BACKUP_ENCRYPTION_KEY"
+export BORG_PASSPHRASE="silly yello fish"
 
 echo "  Starting Variable Setup"
-export BORG_REPO="/backup/${BACKUP_NAME}"
+BORG_REPO="/backup/local/test"
+BORG_SOURCE="/data/nextcloud"
 echo "  Ending Variable Setup"
 
 echo "  Starting Borg Backup"
@@ -16,7 +17,7 @@ if [[ ! -d "$BORG_REPO" ]]; then
 fi
 
 echo "    Creating Daily Archive"
-borg create "$BORG_REPO"::"${BORG_DATE}" /data
+borg create "$BORG_REPO"::"${BORG_DATE}" "$BORG_SOURCE"
 echo "    END-Creating Daily Archive"
 
 

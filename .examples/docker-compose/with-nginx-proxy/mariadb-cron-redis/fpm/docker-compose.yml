@@ -142,14 +142,14 @@ services:
       - TTL=1
       - PROXY=false
 
-  # signal-web-gateway:
-  #   image: registry.gitlab.com/morph027/signal-web-gateway:master
-  #   restart: always
-  #   expose:
-  #     - 5000
-  #   volumes:
-  #     - signal:/signal
-  #     - /etc/localtime:/etc/localtime:ro
+  signal-web-gateway:
+    image: registry.gitlab.com/morph027/signal-web-gateway:master
+    restart: always
+    expose:
+      - 5000
+    volumes:
+      - signal:/signal
+      - /etc/localtime:/etc/localtime:ro
 
   fail2ban:
     build:
@@ -177,6 +177,22 @@ services:
     depends_on:
       - app
 
+  backup:
+    build:
+      context: ./backup
+      args:
+        - signal_client_number=${SIGNAL_CLIENT_NO}
+    restart: always
+    hostname: ${COMPOSE_PROJECT_NAME}
+    volumes:
+      - nextcloud-data:/data/nextcloud:ro
+      - backup-config:/config
+      - backup-local:/backup/local
+      - backup-ftp:/backup/ftp
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - app
+
 volumes:
   db:
   nextcloud:
@@ -186,6 +202,9 @@ volumes:
   vhost.d:
   html:
   signal:
+  backup-config:
+  backup-local:
+  backup-ftp:
 
 networks:
   proxy-tier:

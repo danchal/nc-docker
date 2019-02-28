@@ -8,6 +8,11 @@
         Collabora
         Signal Web Gateway
         Cloudflare DDNS
+        Fail2Ban
+        Restic
+        Rclone
+
+# Setup
 
 ## Environment variables
 1. Copy env.example and rename to .env .
@@ -50,6 +55,26 @@
         $ docker-compose exec --user www-data app php occ twofactorauth:gateway:configure signal
 
 1. Using Nextcloud, enable 2FA for a user.
+
+## Backup
+
+[https://rclone.org](https://rclone.org/)
+
+[https://restic.net](https://restic.net/)
+
+1. Start a bash session in the backup container
+
+        $ docker exec -it <backup> /bin/sh
+
+1. Setup the rclone endpoint by running the interactive configuration
+
+        $ rclone config
+
+1. Initialise the repository
+
+        $ restic-runner --repo REPONAME init
+
+# Help
 
 ## Collabora
 Verify that all these url's work as expected

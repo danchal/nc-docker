@@ -4,12 +4,14 @@ FROM restic/restic
 ENV RCLONE_VERSION="current"
 ENV RCLONE_ARCH="amd64"
 
+ARG signal_client_number
+
 # use local copy of restic-runner until fixed
 COPY restic-runner /usr/bin
 
 RUN \
     # add required packages for restic-runner
-    apk add --update coreutils bash bc && \
+    apk add --update coreutils bash bc curl && \
     \
     # install build packages
     apk add --no-cache --virtual=build-dependencies \
@@ -50,6 +52,9 @@ RUN \
     \
     # create and link rclone config directory to container config volume
     mkdir -p /root/.config/backup && \
-    ln -fs /config/rclone /root/.config/
+    ln -fs /config/rclone /root/.config/ && \
+    \
+    # update signal number
+    sed -i "s|THE_TELEPHONE=+1234567890|THE_TELEPHONE=$signal_client_number|" /restic.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

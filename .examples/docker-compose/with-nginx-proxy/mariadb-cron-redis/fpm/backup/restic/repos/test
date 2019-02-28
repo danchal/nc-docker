@@ -1,4 +1,4 @@
-export RESTIC_REPOSITORY=rclone:ftp:restic/nc
+export RESTIC_REPOSITORY=rclone:ftp:nc
 export RESTIC_PASSWORD_FILE=/config/test.password
 
 du=false

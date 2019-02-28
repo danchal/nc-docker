@@ -180,6 +180,8 @@ services:
   backup:
     build:
       context: ./backup
+      args:
+        - signal_client_number=${SIGNAL_CLIENT_NO}
     restart: always
     hostname: ${COMPOSE_PROJECT_NAME}
     volumes:

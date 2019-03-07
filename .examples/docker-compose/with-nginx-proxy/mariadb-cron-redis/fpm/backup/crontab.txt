@@ -1,25 +1,6 @@
-# Test
-# ---------------------------------------
-* * * * * /borg.sh
+# test fail
+#* * * * * /app/backup.sh
 
-# Every hour
-# ---------------------------------------
-11 * * * * /restic.sh backup local nextcloud
-
-# Every day
-# ---------------------------------------
-33 02 * * * /restic.sh backup cloud nextcloud
-
-44 02 * * * /restic.sh verify-randomly local
-55 02 * * * /restic.sh verify-randomly cloud
-
-33 03 * * * /restic.sh expire local
-44 03 * * * /restic.sh expire cloud
-
-# Monday, Thursday, Saturday
-# ---------------------------------------
-33 04 * * 1,4,6 /restic.sh check local
-
-# Tuesday, Friday, Sunday
-# ---------------------------------------
-33 04 * * 2,5,7 /restic.sh check cloud
+# Every day @ 04:44 full backup
+# -----------------------------
+44 04 * * * /app/backup.sh

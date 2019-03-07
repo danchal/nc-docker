@@ -181,13 +181,15 @@ services:
     build:
       context: ./backup
       args:
+        - borg_passphrase=${BORG_PASSPHRASE}
         - signal_client_number=${SIGNAL_CLIENT_NO}
-    restart: always
     hostname: ${COMPOSE_PROJECT_NAME}
+    restart: always
     volumes:
-      - nextcloud-data:/data/nextcloud:ro
       - backup-config:/config
-      - backup-local:/backup/local
+      - backup-cache:/cache
+      - nextcloud-data:/source/nextcloud:ro
+      - backup-repo:/repository
       - /etc/localtime:/etc/localtime:ro
     depends_on:
       - app
@@ -202,7 +204,8 @@ volumes:
   html:
   signal:
   backup-config:
-  backup-local:
+  backup-cache:
+  backup-repo:
 
 networks:
   proxy-tier:

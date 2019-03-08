@@ -1,17 +1,24 @@
-FROM restic/restic
+from monachus/borgmatic
+
+ARG borg_passphrase
+ARG signal_client_number
 
 # global environment settings
 ENV RCLONE_VERSION="current"
 ENV RCLONE_ARCH="amd64"
+ENV BORG_PASSPHRASE="${borg_passphrase}"
+ENV BORG_CACHE_DIR=/cache
 
-ARG signal_client_number
-
-# use local copy of restic-runner until fixed
-COPY restic-runner /usr/bin
+COPY crontab.txt /app/
+COPY *.yaml /etc/borgmatic.d/
+COPY *.sh /app/
 
 RUN \
-    # add required packages for restic-runner
-    apk add --update coreutils bash bc curl && \
+    # add required packages
+    apk add --no-cache --update \
+        \
+        # signal messenger
+        curl && \
     \
     # install build packages
     apk add --no-cache --virtual=build-dependencies \
@@ -24,37 +31,27 @@ RUN \
     unzip /tmp/rclone-${RCLONE_VERSION}-linux-${RCLONE_ARCH}.zip && \
     mv /tmp/rclone-*-linux-${RCLONE_ARCH}/rclone /usr/bin && \
     \
-    # get restic-runner
-    #wget -P /usr/bin https://raw.githubusercontent.com/alphapapa/restic-runner/master/restic-runner && \
-    chmod 755 /usr/bin/restic-runner && \
-    \
     # cleanup
     apk del --purge \
-    build-dependencies && \
+        build-dependencies && \
     rm -rf \
         /tmp/* \
         /var/tmp/* \
-        /var/cache/apk/*
-
-VOLUME ["/config", "/data"]
-
-# cron and config files
-COPY crontab.txt /crontab.txt
-COPY *.sh /
-COPY restic /root/.config/backup/restic
-
-RUN \
+        /var/cache/apk/* && \
+    \
     # set execute bit on all shell files
-    chmod 755 /*.sh && \
+    chmod 755 /app/*.sh && \
     \
     # setup crontab
-    usr/bin/crontab /crontab.txt && \
+    /usr/bin/crontab /app/crontab.txt && \
     \
     # create and link rclone config directory to container config volume
-    mkdir -p /root/.config/backup && \
+    mkdir -p /root/.config && \
     ln -fs /config/rclone /root/.config/ && \
     \
     # update signal number
-    sed -i "s|THE_TELEPHONE=+1234567890|THE_TELEPHONE=$signal_client_number|" /restic.sh
+    sed -i "s|THE_TELEPHONE=+1234567890|THE_TELEPHONE=$signal_client_number|" /app/signal.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+VOLUME ["/config", "/cache", "/source", "/repository"]
+
+ENTRYPOINT ["/app/entrypoint.sh"]

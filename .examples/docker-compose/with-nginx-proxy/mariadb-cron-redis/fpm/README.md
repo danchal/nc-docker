@@ -60,8 +60,7 @@
 
 [https://rclone.org](https://rclone.org/)
 
-[https://restic.net](https://restic.net/)
-
+### Setup Rclone endpoint
 1. Start a bash session in the backup container
 
         $ docker exec -it <backup> /bin/sh
@@ -69,10 +68,6 @@
 1. Setup the rclone endpoint by running the interactive configuration
 
         $ rclone config
-
-1. Initialise the repository
-
-        $ restic-runner --repo REPONAME init
 
 # Help
 

@@ -73,6 +73,11 @@ services:
       - backup-cache:/cache
       - backup-repo:/repository
       - /etc/localtime:/etc/localtime:ro
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    env_file:
+      - db.env
     entrypoint: /cron.sh
     depends_on:
       - db

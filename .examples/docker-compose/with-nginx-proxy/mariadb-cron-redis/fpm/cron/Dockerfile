@@ -1,31 +1,9 @@
-FROM nextcloud:fpm-alpine
-
-ARG borg_passphrase
-ARG signal_client_number
-
-# global environment settings
-ENV BORG_PASSPHRASE="${borg_passphrase}"
-ENV BORG_CACHE_DIR=/cache
-ENV BORG_CONFIG_DIR=/app
+FROM alpine:latest as builder
 ENV RCLONE_VERSION="current"
 ENV RCLONE_ARCH="amd64"
-
-COPY crontab.txt /app/
-COPY *.yaml /app/
-COPY *.sh /app/
-
 RUN \
-    # add required packages
-    apk add --no-cache --update \
-        \
-        # borgbackup
-        python3 \
-        \
-        # signal messenger
-        curl && \
-    \
     # install build packages
-    apk add --no-cache --virtual=build-dependencies \
+    apk add --no-cache \
         wget \
         unzip \
         alpine-sdk \
@@ -44,11 +22,40 @@ RUN \
     cd /tmp && \
     wget -q http://downloads.rclone.org/rclone-${RCLONE_VERSION}-linux-${RCLONE_ARCH}.zip && \
     unzip /tmp/rclone-${RCLONE_VERSION}-linux-${RCLONE_ARCH}.zip && \
-    mv /tmp/rclone-*-linux-${RCLONE_ARCH}/rclone /usr/bin && \
+    mv /tmp/rclone-*-linux-${RCLONE_ARCH}/rclone /usr/bin
+
+FROM nextcloud:fpm-alpine
+COPY --from=builder /usr/lib/python3.6/site-packages /usr/lib/python3.6/
+COPY --from=builder /usr/bin/borg /usr/bin/
+COPY --from=builder /usr/bin/borgfs /usr/bin/
+COPY --from=builder /usr/bin/borgmatic /usr/bin/
+COPY --from=builder /usr/bin/generate-borgmatic-config /usr/bin/
+COPY --from=builder /usr/bin/upgrade-borgmatic-config /usr/bin/
+COPY --from=builder /usr/bin/rclone /usr/bin/
+
+ARG borg_passphrase
+ARG signal_client_number
+
+# global environment settings
+ENV BORG_PASSPHRASE="${borg_passphrase}"
+ENV BORG_CACHE_DIR=/cache
+ENV BORG_CONFIG_DIR=/app
+
+COPY crontab.txt /app/
+COPY *.yaml /app/
+COPY *.sh /app/
+
+RUN \
+    # add required packages
+    apk add --no-cache --update \
+        \
+        # borgbackup
+        python3 \
+        \
+        # signal messenger
+        curl && \
     \
     # cleanup
-    apk del --purge \
-        build-dependencies && \
     rm -rf \
         /tmp/* \
         /var/tmp/* \

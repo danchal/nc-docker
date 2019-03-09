@@ -162,15 +162,16 @@ retention:
 # Consistency checks to run after backups. See
 # https://borgbackup.readthedocs.org/en/stable/usage.html#borg-check and
 # https://borgbackup.readthedocs.org/en/stable/usage.html#borg-extract for details.
-#consistency:
+consistency:
     # List of one or more consistency checks to run: "repository", "archives", and/or
     # "extract". Defaults to "repository" and "archives". Set to "disabled" to disable
     # all consistency checks. "repository" checks the consistency of the repository,
     # "archive" checks all of the archives, and "extract" does an extraction dry-run
     # of the most recent archive.
-    #checks:
-    #    - repository
-    #    - archives
+    checks:
+        - repository
+        - archives
+        - extract
 
     # Paths to a subset of the repositories in the location section on which to run
     # consistency checks. Handy in case some of your repositories are very large, and

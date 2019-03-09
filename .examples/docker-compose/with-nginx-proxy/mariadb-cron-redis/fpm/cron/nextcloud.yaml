@@ -4,13 +4,13 @@
 location:
     # List of source directories to backup (required). Globs and tildes are expanded.
     source_directories:
-        - /source/nextcloud
+        - /data
 
     # Paths to local or remote repositories (required). Tildes are expanded. Multiple
     # repositories are backed up to in sequence. See ssh_command for SSH options like
     # identity file or port.
     repositories:
-      - /repository/test
+      - /repository/nextcloud
 
     # Stay in same file system (do not cross mount points). Defaults to false.
     #one_file_system: true

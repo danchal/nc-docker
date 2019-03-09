@@ -3,7 +3,7 @@
 THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
 error=1
 
-report=$(borgmatic 2>&1)
+report=$(borgmatic -c ${BORG_CONFIG_DIR} 2>&1)
 result=$?
 
 if [ $result -eq 0 ]; then

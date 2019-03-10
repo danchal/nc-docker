@@ -69,6 +69,7 @@ services:
     volumes:
       - nextcloud:/var/www/html
       - nextcloud-data:/data
+      - backup-dbdump:/dbdump
       - backup-config:/config
       - backup-cache:/cache
       - backup-repo:/repository
@@ -190,23 +191,6 @@ services:
     depends_on:
       - app
 
-  # backup:
-  #   build:
-  #     context: ./backup
-  #     args:
-  #       - borg_passphrase=${BORG_PASSPHRASE}
-  #       - signal_client_number=${SIGNAL_CLIENT_NO}
-  #   hostname: ${COMPOSE_PROJECT_NAME}
-  #   restart: always
-  #   volumes:
-  #     - backup-config:/config
-  #     - backup-cache:/cache
-  #     - nextcloud-data:/source/nextcloud:ro
-  #     - backup-repo:/repository
-  #     - /etc/localtime:/etc/localtime:ro
-  #   depends_on:
-  #     - app
-
 volumes:
   db:
   nextcloud:
@@ -218,6 +202,7 @@ volumes:
   signal:
   backup-config:
   backup-cache:
+  backup-dbdump:
   backup-repo:
 
 networks:

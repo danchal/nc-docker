@@ -52,6 +52,9 @@ RUN \
         # borgbackup
         python3 \
         \
+        # mariadb
+        mariadb-client \
+        \
         # signal messenger
         curl && \
     \
@@ -73,5 +76,3 @@ RUN \
     \
     # update signal number
     sed -i "s|THE_TELEPHONE=+1234567890|THE_TELEPHONE=$signal_client_number|" /app/signal.sh
-
-VOLUME ["/config", "/cache", "/data", "/repository"]

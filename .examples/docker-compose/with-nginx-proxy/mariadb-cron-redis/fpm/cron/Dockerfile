@@ -33,17 +33,17 @@ COPY --from=builder /usr/bin/generate-borgmatic-config /usr/bin/
 COPY --from=builder /usr/bin/upgrade-borgmatic-config /usr/bin/
 COPY --from=builder /usr/bin/rclone /usr/bin/
 
-ARG borg_passphrase
+COPY app /app
+
 ARG signal_client_number
+ARG rclone_remote
 
 # global environment settings
-ENV BORG_PASSPHRASE="${borg_passphrase}"
 ENV BORG_CACHE_DIR=/cache
 ENV BORG_CONFIG_DIR=/app
-
-COPY crontab.txt /app/
-COPY *.yaml /app/
-COPY *.sh /app/
+ENV RCLONE_REMOTE=${RCLONE_REMOTE}
+ENV SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
+ENV ENV="/root/.ashrc"
 
 RUN \
     # add required packages
@@ -74,5 +74,5 @@ RUN \
     mkdir -p /root/.config && \
     ln -fs /config/rclone /root/.config/ && \
     \
-    # update signal number
-    sed -i "s|THE_TELEPHONE=+1234567890|THE_TELEPHONE=$signal_client_number|" /app/signal.sh
+    # set environment variables
+    echo 'export NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")' >> "$ENV"

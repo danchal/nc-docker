@@ -61,10 +61,6 @@ services:
   cron:
     build:
       context: ./cron
-      args:
-        - borg_passphrase=${BORG_PASSPHRASE}
-        - signal_client_number=${SIGNAL_CLIENT_NO}
-    hostname: ${COMPOSE_PROJECT_NAME}
     restart: always
     volumes:
       - nextcloud:/var/www/html
@@ -77,9 +73,12 @@ services:
     environment:
       - MYSQL_HOST=db
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - RCLONE_REMOTE=${RCLONE_REMOTE}
+      - SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
+    hostname: ${COMPOSE_PROJECT_NAME}
     env_file:
       - db.env
-    entrypoint: /cron.sh
+    entrypoint: /app/entry.sh
     depends_on:
       - db
       - redis

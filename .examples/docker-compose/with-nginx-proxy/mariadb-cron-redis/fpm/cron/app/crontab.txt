@@ -1,5 +1,3 @@
-# test
-#* * * * * /app/backup.sh create
 
 # Every day @ 04:44 full backup and check
 # -----------------------------

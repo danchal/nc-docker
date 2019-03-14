@@ -11,7 +11,7 @@ location:
     # repositories are backed up to in sequence. See ssh_command for SSH options like
     # identity file or port.
     repositories:
-      - /repository/nextcloud
+      - /repository/{NEXTCLOUD_INSTANCEID}/nextcloud
 
     # Stay in same file system (do not cross mount points). Defaults to false.
     #one_file_system: true
@@ -78,12 +78,12 @@ location:
 # https://borgbackup.readthedocs.io/en/stable/usage.html#borg-create and
 # https://borgbackup.readthedocs.io/en/stable/usage/general.html#environment-variables for
 # details.
-#storage:
+storage:
     # The standard output of this command is used to unlock the encryption key. Only
     # use on repositories that were initialized with passcommand/repokey encryption.
     # Note that if both encryption_passcommand and encryption_passphrase are set,
     # then encryption_passphrase takes precedence. Defaults to not set.
-    #encryption_passcommand: cat /app/borg-passphrase
+    encryption_passcommand: cat /app/nextcloud-passphrase
 
     # Passphrase to unlock the encryption key with. Only use on repositories that were
     # initialized with passphrase/repokey encryption. Quote the value if it contains

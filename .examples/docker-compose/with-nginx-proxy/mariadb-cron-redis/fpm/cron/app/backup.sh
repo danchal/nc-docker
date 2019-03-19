@@ -1,12 +1,15 @@
 #!/bin/sh
 THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
 THE_REPOSITORY="/repository"
-error=
+BORG_PASSCOMMAND="cat /app/nextcloud-passphrase"
+error=0
 trap finish EXIT
 command=$1
 
 finish(){
-    set_maintenance_mode off
+    if [ $error -ne 0 ]; then
+        set_maintenance_mode off
+    fi
     exit $error
 }
 
@@ -15,32 +18,10 @@ send_signal(){
     source /app/signal.sh "$message"
 }
 
-set_maintenance_mode(){
-    su www-data -s /bin/sh -c "php occ maintenance:mode --$1"
-}
-
-do_borgmatic(){
-    report=$(borgmatic -c ${BORG_CONFIG_DIR} --$1 2>&1)
-    ret_val=$?
-
-    message="borgmatic ${1} $report"
-    echo "$message"
-
-    if [ $ret_val -ne 0 ]; then
-        send_signal FAILED "$message"
-        error=1
-    fi
-}
-
-do_rclone(){
-    report=$(rclone $1 $2 ${RCLONE_REMOTE}:${NEXTCLOUD_INSTANCEID} 2>&1)
-    ret_val=$?
-
-    message="rclone ${1} $report"
-    echo "$message"
-
-    if [ $ret_val -ne 0 ]; then
-        send_signal FAILED "$message"
+handle_report(){
+    if [ $2 -ne 0 ]; then
+        echo "$1"
+        send_signal FAILED "$1"
         error=1
     fi
 }
@@ -48,6 +29,8 @@ do_rclone(){
 do_validation(){
     report=""
     ret_val=0
+
+    echo "Start: validation"
 
     # error if not set
     if [ -z $RCLONE_REMOTE ]; then
@@ -61,32 +44,61 @@ do_validation(){
     fi
 
     message="validation $report"
-    echo "$message"
+    handle_report "$message" $ret_val
+}
 
-    if [ $ret_val -ne 0 ]; then
-        send_signal FAILED "$message"
-        error=1
-        exit 1
-    fi
+do_command(){
+    echo "Do: $*"
+    command=$1
+    p1=$2
+    p2=$3
+    
+    case ${command} in
+        borgmatic)
+            report=$(borgmatic -c ${BORG_CONFIG_DIR} --${p1} 2>&1)
+            ret_val=$?
+            ;;
+        rclone)
+            report=$(rclone ${p1} ${p2} ${RCLONE_REMOTE}:${NEXTCLOUD_INSTANCEID} 2>&1)
+            ret_val=$?
+            ;;
+        maintenancemode)
+            report=$(su www-data -s /bin/sh -c "php occ maintenance:mode --${p1}" 2>&1)
+            ret_val=$?
+            ;;
+        dbdump)
+            report=$(mysqldump \
+                --single-transaction \
+                --result_file=/dbdump/nextcloud-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak \
+                -h ${MYSQL_HOST} \
+                -u ${MYSQL_USER} \
+                -p${MYSQL_PASSWORD} \
+                ${MYSQL_DATABASE} \
+            2>&1)
+            ret_val=$?
+            ;;
+        borgcheck)
+            report=$(borg --info check --verify-data ${THE_REPOSITORY}* 2>&1)
+            ret_val=$?
+            ;;
+        *)
+            report="unknown command"
+            ret_val=1
+    esac
+
+    handle_report "$* ${report}" ${ret_val}
 }
 
 do_validation
-
-do_borgmatic prune
-
-set_maintenance_mode on
-
-# backup DB
-mysqldump --single-transaction -h ${MYSQL_HOST} -u ${MYSQL_USER} -p${MYSQL_PASSWORD} ${MYSQL_DATABASE} > /dbdump/nextcloud-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak
-
-do_borgmatic create
-
-set_maintenance_mode off
-
-# rclone
-do_rclone sync $THE_REPOSITORY
+do_command borgmatic prune
+do_command maintenancemode on
+do_command dbdump
+do_command borgmatic create
+do_command maintenancemode off
+do_command rclone sync $THE_REPOSITORY
 
 if [ $command ] && [ $command == "check" ]; then
-    do_borgmatic check
-    do_rclone check $THE_REPOSITORY
+    do_command borgmatic check
+    do_command borgcheck
+    do_command rclone check $THE_REPOSITORY
 fi

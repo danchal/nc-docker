@@ -101,7 +101,7 @@ backuplog=$(mktemp)
 
     if [ $THE_COMMAND ] && [ $THE_COMMAND == "check" ]; then
         do_command rclone check $THE_REPOSITORY # must be before borg check (see below)
-        do_command borgmatic check              # changes nonce file in repo?
+        do_command borgmatic check              # borg check changes nonce file in repo?
         #do_command borgcheck
     fi
 

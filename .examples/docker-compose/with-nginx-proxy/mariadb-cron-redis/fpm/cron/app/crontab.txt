@@ -1,0 +1,4 @@
+
+# Every day @ 04:44 full backup and check
+# -----------------------------
+44 04 * * * /app/backup.sh check

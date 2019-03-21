@@ -59,13 +59,26 @@ services:
       - default
 
   cron:
-    build: ./app
+    build:
+      context: ./cron
     restart: always
     volumes:
       - nextcloud:/var/www/html
       - nextcloud-data:/data
+      - backup-dbdump:/dbdump
+      - backup-config:/config
+      - backup-cache:/cache
+      - backup-repo:/repository
       - /etc/localtime:/etc/localtime:ro
-    entrypoint: /cron.sh
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - RCLONE_REMOTE=${RCLONE_REMOTE}
+      - SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
+    hostname: ${COMPOSE_PROJECT_NAME}
+    env_file:
+      - db.env
+    entrypoint: /app/entry.sh
     depends_on:
       - db
       - redis
@@ -177,21 +190,6 @@ services:
     depends_on:
       - app
 
-  backup:
-    build:
-      context: ./backup
-      args:
-        - signal_client_number=${SIGNAL_CLIENT_NO}
-    restart: always
-    hostname: ${COMPOSE_PROJECT_NAME}
-    volumes:
-      - nextcloud-data:/data/nextcloud:ro
-      - backup-config:/config
-      - backup-local:/backup/local
-      - /etc/localtime:/etc/localtime:ro
-    depends_on:
-      - app
-
 volumes:
   db:
   nextcloud:
@@ -202,7 +200,9 @@ volumes:
   html:
   signal:
   backup-config:
-  backup-local:
+  backup-cache:
+  backup-dbdump:
+  backup-repo:
 
 networks:
   proxy-tier:

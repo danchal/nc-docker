@@ -12,11 +12,10 @@ RUN \
         linux-headers \
         python3-dev; \
     \
-    # install borgmatic
+    # install borgbackup
     pip3 install --upgrade \
         pip \
-        borgbackup \
-        borgmatic; \
+        borgbackup; \
     \
     # install rclone
     cd /tmp; \
@@ -28,9 +27,6 @@ FROM nextcloud:fpm-alpine
 COPY --from=builder /usr/lib/python3.6/site-packages /usr/lib/python3.6/
 COPY --from=builder /usr/bin/borg /usr/bin/
 COPY --from=builder /usr/bin/borgfs /usr/bin/
-COPY --from=builder /usr/bin/borgmatic /usr/bin/
-COPY --from=builder /usr/bin/generate-borgmatic-config /usr/bin/
-COPY --from=builder /usr/bin/upgrade-borgmatic-config /usr/bin/
 COPY --from=builder /usr/bin/rclone /usr/bin/
 
 COPY app /app
@@ -41,6 +37,10 @@ ARG rclone_remote
 # global environment settings
 ENV BORG_CACHE_DIR=/cache
 ENV BORG_CONFIG_DIR=/app
+ENV BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=no
+ENV BORG_RELOCATED_REPO_ACCESS_IS_OK=no
+
+ENV BASE_REPOSITORY=/repository
 ENV RCLONE_REMOTE=${RCLONE_REMOTE}
 ENV SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
 ENV ENV="/root/.ashrc"

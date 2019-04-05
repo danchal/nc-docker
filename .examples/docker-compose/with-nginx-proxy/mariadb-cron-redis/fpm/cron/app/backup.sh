@@ -4,10 +4,9 @@
 backuplog=$(mktemp)
 {
     readonly THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
-    readonly THE_REPOSITORY="/repository"
-    readonly THE_COMMAND=$1
-    export readonly BORG_PASSCOMMAND="cat /app/borg-passphrase"
-
+    readonly THE_CONFIG=$1
+    readonly THE_COMMAND=$2
+    
     error=0
     trap 'do_exit ${?}' EXIT INT
 
@@ -47,27 +46,45 @@ backuplog=$(mktemp)
             echo "${report} - Environment variable NEXTCLOUD_INSTANCEID not set"
             error=102
         fi
+        
+        if [ -z "$BASE_REPOSITORY" ]; then
+            echo "${report} - Environment variable BASE_REPOSITORY not set"
+            error=103
+        fi
+        
+        if [ -z "$THE_CONFIG" ]; then
+            echo "${report} - Environment variable THE_CONFIG not set"
+            error=103
+        fi
     }
 
     do_command(){
         echo "Do: $*"
         command=$1
         p1=$2
-        p2=$3
-        p3=$4
 
         case ${command} in
-            borgmatic)
-                borgmatic -c "${BORG_CONFIG_DIR}" "--${p1}"
+            borgprune)
+                # allow backup prune to expand
+                borg prune --info ${ARCHIVE_PRUNE} "${BORG_REPO}"
+                handle_return $? 110
+                ;;
+            borgcreate)
+                # allow backup sources to expand
+                borg create --info "${BORG_REPO}::${ARCHIVE_NAME}" ${ARCHIVE_SOURCE}
                 handle_return $? 111
                 ;;
-            rclone)
-                rclone "${p1}" "${p2}" "${RCLONE_REMOTE}:${NEXTCLOUD_INSTANCEID}" ${p3:+"$p3"}
+            borgcheck)
+                borg check --info --verify-data "${BASE_REPOSITORY}/*"
                 handle_return $? 112
+                ;;
+            rclone)
+                rclone "${p1}" "${BASE_REPOSITORY}" "${RCLONE_REMOTE}:${NEXTCLOUD_INSTANCEID}"
+                handle_return $? 120
                 ;;
             maintenancemode)
                 su www-data -s /bin/sh -c "php occ maintenance:mode --${p1}"
-                handle_return $? 113
+                handle_return $? 130
                 ;;
             dbdump)
                 mysqldump \
@@ -77,32 +94,29 @@ backuplog=$(mktemp)
                     -u "${MYSQL_USER}" \
                     -p"${MYSQL_PASSWORD}" \
                     "${MYSQL_DATABASE}"
-                handle_return $? 114
-                ;;
-            borgcheck)
-                borg --info check --verify-data "${THE_REPOSITORY}/*"
-                handle_return $? 115
+                handle_return $? 131
                 ;;
             *)
                 report="unknown command"
-                handle_return $? 119
+                handle_return $? 199
         esac
     }
 
-    echo "Start $0"
+    echo "Start $0 config<${THE_CONFIG}>, command<${THE_COMMAND}>"
+
+    source "/app/${THE_CONFIG}.borg"
 
     do_validation
-    do_command borgmatic prune
+    do_command borgprune
     do_command maintenancemode on
     do_command dbdump
-    do_command borgmatic create
+    do_command borgcreate
     do_command maintenancemode off
-    do_command rclone sync "${THE_REPOSITORY}"
+    do_command rclone sync
 
     if [ "$THE_COMMAND" ] && [ "$THE_COMMAND" = "check" ]; then
-        do_command rclone check "$THE_REPOSITORY" # must be before borg check (see below)
-        do_command borgmatic check                # borg check changes nonce file in repo?
-        #do_command borgcheck
+        do_command rclone check                    # must be before borg check as borg check does change nonce file
+        do_command borgcheck                       # borg check changes nonce file in repo?
     fi
 
     exit $error

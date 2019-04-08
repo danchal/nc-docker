@@ -8,7 +8,7 @@ backuplog=$(mktemp)
     readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")
     readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
     readonly ARCHIVE_NAME="${NEXTCLOUD_INSTANCEID}-{now:%Y-%m-%dT%H:%M:%S}"
-    readonly ARCHIVE_SOURCE="/data /var/www/html"
+    readonly ARCHIVE_SOURCE="/data /var/www/html/config /var/www/html/custom_apps /var/www/html/themes"
     export BORG_REPO="${BASE_REPOSITORY}/nextcloud"
         
     error=0
@@ -16,11 +16,11 @@ backuplog=$(mktemp)
 
     do_exit(){
         LASTERR="$1"
-        message="PASS - $(hostname): ${THE_DATE} - Backup"
+        message="PASS - ${THE_DATE} - Backup"
 
         if [ "$LASTERR" -ne 0 ]; then
             do_command maintenancemode off
-            message="FAILED - $(hostname): ${THE_DATE} - [${LASTERR}] Backup"
+            message="FAILED - ${THE_DATE} - [${LASTERR}] Backup"
         fi
 
         echo "$message"
@@ -110,7 +110,10 @@ backuplog=$(mktemp)
                 ;;
             borgcreate)
                 # allow backup sources to expand
-                borg create --info "::${ARCHIVE_NAME}" ${ARCHIVE_SOURCE}
+                borg create \
+                    --info \
+                    --exclude data/.opcache \
+                    "::${ARCHIVE_NAME}" ${ARCHIVE_SOURCE}
                 handle_return $? 111
                 ;;
             borgcheck)

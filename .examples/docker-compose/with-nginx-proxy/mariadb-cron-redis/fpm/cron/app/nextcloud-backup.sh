@@ -8,6 +8,7 @@ backuplog=$(mktemp)
     readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")
     readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
     readonly ARCHIVE_NAME="${NEXTCLOUD_INSTANCEID}-{now:%Y-%m-%dT%H:%M:%S}"
+    readonly ARCHIVE_SOURCE="/data /var/www/html"
     export BORG_REPO="${BASE_REPOSITORY}/nextcloud"
         
     error=0

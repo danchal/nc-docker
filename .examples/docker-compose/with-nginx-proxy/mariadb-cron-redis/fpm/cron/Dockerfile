@@ -31,19 +31,13 @@ COPY --from=builder /usr/bin/rclone /usr/bin/
 
 COPY app /app
 
-ARG signal_client_number
-ARG rclone_remote
-
 # global environment settings
 ENV BORG_CACHE_DIR=/cache
-ENV BORG_CONFIG_DIR=/app
+ENV BORG_CONFIG_DIR=/config/borg
 ENV BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=no
 ENV BORG_RELOCATED_REPO_ACCESS_IS_OK=no
-
 ENV BASE_REPOSITORY=/repository
-ENV RCLONE_REMOTE=${RCLONE_REMOTE}
-ENV SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
-ENV ENV="/root/.ashrc"
+ENV RCLONE_CONFIG=/config/rclone/rclone.conf
 
 RUN \
     # add required packages
@@ -68,11 +62,6 @@ RUN \
     chmod 755 /app/*.sh; \
     \
     # setup crontab
-    cat /app/crontab.txt >> /var/spool/cron/crontabs/www-data; \
-    \
-    # create and link rclone config directory to container config volume
-    mkdir -p /root/.config; \
-    ln -fs /config/rclone /root/.config/; \
-    \
-    # set environment variables
-    echo 'export NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")' >> "$ENV"
+    cat /app/crontab.txt >> /var/spool/cron/crontabs/root
+
+VOLUME /cache /config /repository

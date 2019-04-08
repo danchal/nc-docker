@@ -65,7 +65,6 @@ services:
     volumes:
       - nextcloud:/var/www/html
       - nextcloud-data:/data
-      - backup-dbdump:/dbdump
       - backup-config:/config
       - backup-cache:/cache
       - backup-repo:/repository
@@ -73,12 +72,17 @@ services:
     environment:
       - MYSQL_HOST=db
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - BORG_PASSPHRASE=${BORG_PASSPHRASE}
+      - ARCHIVE_SOURCE=${ARCHIVE_SOURCE}
+      - ARCHIVE_PRUNE=${ARCHIVE_PRUNE}
       - RCLONE_REMOTE=${RCLONE_REMOTE}
+      - RCLONE_DRIVE_CLIENT_ID=${RCLONE_DRIVE_CLIENT_ID}
+      - RCLONE_DRIVE_CLIENT_SECRET=${RCLONE_DRIVE_CLIENT_SECRET}
+      - RCLONE_DRIVE_SCOPE=${RCLONE_DRIVE_SCOPE}
+      - RCLONE_DRIVE_SERVICE_ACCOUNT_FILE=${RCLONE_DRIVE_SERVICE_ACCOUNT_FILE}
       - SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
-    hostname: ${COMPOSE_PROJECT_NAME}
     env_file:
       - db.env
-    entrypoint: /app/entry.sh
     depends_on:
       - db
       - redis
@@ -164,31 +168,6 @@ services:
       - signal:/signal
       - /etc/localtime:/etc/localtime:ro
 
-  fail2ban:
-    build:
-      context: ./fail2ban
-    restart: always
-    network_mode: "host"
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    volumes:
-      - /var/lib/docker/volumes/${COMPOSE_PROJECT_NAME}_nextcloud-data/_data/nextcloud.log:/var/log/nextcloud.log:ro
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - F2B_DEST_EMAIL=${F2B_DEST_EMAIL}
-      - F2B_SENDER=${F2B_SENDER}
-      - SSMTP_HOST=${SSMTP_HOST}
-      - SSMTP_PORT=${SSMTP_PORT}
-      - SSMTP_HOSTNAME=${SSMTP_HOSTNAME}
-      - SSMTP_USER=${SSMTP_USER}
-      - SSMTP_PASSWORD=${SSMTP_PASSWORD}
-      - SSMTP_TLS=${SSMTP_TLS}
-    env_file:
-      - ./fail2ban/fail2ban.env
-    depends_on:
-      - app
-
 volumes:
   db:
   nextcloud:
@@ -199,7 +178,6 @@ volumes:
   signal:
   backup-config:
   backup-cache:
-  backup-dbdump:
   backup-repo:
 
 networks:

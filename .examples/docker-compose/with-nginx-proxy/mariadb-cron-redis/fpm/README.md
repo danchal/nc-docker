@@ -8,8 +8,7 @@
         Collabora
         Signal Web Gateway
         Cloudflare DDNS
-        Fail2Ban
-        Restic
+        Borgbackup
         Rclone
 
 # Setup
@@ -61,13 +60,14 @@
 [https://rclone.org](https://rclone.org/)
 
 ### Setup Rclone endpoint
-1. Start a bash session in the backup container
+1. Start a bash session in the cron container
 
-        $ docker exec -it <backup> /bin/sh
+        $ docker exec -it <cron> /bin/sh
 
-1. Setup the rclone endpoint by running the interactive configuration
+1. Setup the rclone endpoint by running the interactive configuration, e.g.
 
         $ rclone config
+        $ rclone config $RCLONE_REMOTE drive config_is_local false
 
 # Help
 

@@ -1,4 +1,4 @@
 
-# Every day @ 04:44 full backup and check
+# Every day @ 03:33 full backup and check
 # -----------------------------
-44 04 * * * /app/backup.sh nextcloud check
+33 03 * * * /app/nextcloud-backup.sh check

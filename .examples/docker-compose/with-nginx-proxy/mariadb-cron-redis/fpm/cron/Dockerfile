@@ -62,6 +62,8 @@ RUN \
     chmod 755 /app/*.sh; \
     \
     # setup crontab
-    cat /app/crontab.txt >> /var/spool/cron/crontabs/root
+    cat /app/crontab.txt >> /var/spool/cron/crontabs/root; \
+    \
+    :
 
 VOLUME /cache /config /repository

@@ -67,7 +67,7 @@
 1. Setup the rclone endpoint by running the interactive configuration, e.g.
 
         $ rclone config
-        $ rclone config $RCLONE_REMOTE drive config_is_local false
+        $ rclone config create $RCLONE_REMOTE drive config_is_local false
 
 # Help
 

@@ -89,5 +89,6 @@ Try:
 
 1. Re-apply the Collabora Online Server settings in the Nextcloud application.
 1. Restart Collabora server.
+1. Re-create the Nextcloud and Collabora domain certificates.
 
 # Notes

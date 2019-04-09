@@ -135,13 +135,12 @@ services:
     environment:
       - domain=${DOMAIN_COLLABORA}
       - dictionaries=${DICTIONARIES_COLLABORA}
-      - username=${USERNAME_COLLABORA}
-      - password=${PASSWORD_COLLABORA}
       - VIRTUAL_HOST=${SUBDOMAIN_COLLABORA}
       - VIRTUAL_PORT=9980
       - VIRTUAL_PROTO=https
       - LETSENCRYPT_HOST=${SUBDOMAIN_COLLABORA}
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - extra_params=--o:net.post_allow.host[0]=::ffff:172.[0-9]+.[0-9]+.[0-9]+
     networks:
       - proxy-tier
 

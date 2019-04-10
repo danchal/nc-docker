@@ -91,3 +91,15 @@ Try:
 1. Re-create the Nextcloud and Collabora domain certificates.
 
 # Notes
+## Restoring
+rclone sync gd:nextcloud_ocjst292xjxl /repository/nextcloud_ocjst292xjxl -P
+
+borg list /repository/nextcloud_ocjst292xjxl/
+
+/app/nextcloud-backup.sh restore /repository/nextcloud_ocjst292xjxl/ 2019-04-10T16:38:05
+
+
+mysql -h "${MYSQL_HOST}" \
+              -u "${MYSQL_USER}" \
+              -p"${MYSQL_PASSWORD}" \
+              -e "SELECT version()"

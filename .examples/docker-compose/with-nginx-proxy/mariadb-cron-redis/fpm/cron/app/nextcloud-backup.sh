@@ -10,7 +10,7 @@ backuplog=$(mktemp)
     readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")
     readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
     readonly ARCHIVE_NAME="{now:%Y-%m-%dT%H:%M:%S}"
-    readonly ARCHIVE_SOURCES="/config /data /var/www/html"
+    readonly ARCHIVE_SOURCES="/config /data /var/www/html/config /var/www/html/custom_apps /var/www/html/themes"
     readonly ARCHIVE_PRUNE="--keep-within=2d --keep-daily=7 --keep-weekly=4 --keep-monthly=-1"
     export BORG_REPO="${BASE_REPOSITORY}/nextcloud_${NEXTCLOUD_INSTANCEID}"
         
@@ -20,8 +20,6 @@ backuplog=$(mktemp)
     do_exit(){
         LASTERR="$1"
         message="PASS - ${THE_DATE} - Backup"
-
-        [ -f "$TMP_EXTRACT" ] && rm -rf "$TMP_EXTRACT"
 
         if [ "$LASTERR" -ne 0 ]; then
             do_command maintenancemode off
@@ -96,12 +94,11 @@ backuplog=$(mktemp)
         echo "Deleting old data files..."
 
         rm -rf /data/* || exit 1
-        rm -rf /config/* || exit 1
         rm -rf /var/www/html/config || exit 1
         rm -rf /var/www/html/custom_apps || exit 1
         rm -rf /var/www/html/themes || exit 1
 
-        TMP_EXTRACT=$(mktemp -d /tmp_extract.XXXXXX)
+        TMP_EXTRACT=$(mktemp -d /data/tmp_extract.XXXXXX)
         cd "$TMP_EXTRACT" || exit 1
         
         echo "Extracting archive data files..."
@@ -113,7 +110,6 @@ backuplog=$(mktemp)
         echo "Restoring archive data files..."
 
         mv "${TMP_EXTRACT}"/data/* /data/ || exit 1
-        mv "${TMP_EXTRACT}"/config/* /config/ || exit 1
         mv "${TMP_EXTRACT}"/var/www/html/config /var/www/html/ || exit 1
         mv "${TMP_EXTRACT}"/var/www/html/custom_apps /var/www/html/ || exit 1
         mv "${TMP_EXTRACT}"/var/www/html/themes /var/www/html/ || exit 1
@@ -142,12 +138,12 @@ backuplog=$(mktemp)
               "${MYSQL_DATABASE}" < "$(ls /data/dbdump-*.bak)" \
         || { echo "Error restoring nextcloud database"; exit 1; }
 
-        do_command maintenancemode off || exit $error
+        echo "Run this command to turn off maintenance mode:"
+        echo "su www-data -s /bin/sh -c 'php occ maintenance:mode --off'"
+        echo ""
+        echo "Run this command to update the sytem data-fingerprint:"
+        echo "su www-data -s /bin/sh -c 'php occ maintenance:data-fingerprint'"
 
-        echo "Updating system data-fingerprint..."
-        
-        su www-data -s /bin/sh -c "php occ maintenance:data-fingerprint" \
-        || { echo "Error performing data-fingerprint"; exit 1; }
     }
 
     do_init(){

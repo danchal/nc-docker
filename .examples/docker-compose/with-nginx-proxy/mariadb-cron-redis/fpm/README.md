@@ -59,7 +59,7 @@
 
 [https://rclone.org](https://rclone.org/)
 
-### Setup Rclone endpoint
+### Setup Rclone endpoints
 1. Start a bash session in the cron container
 
         $ docker exec -it <cron> /bin/sh
@@ -67,7 +67,6 @@
 1. Setup the rclone endpoint by running the interactive configuration, e.g.
 
         $ rclone config
-        $ rclone config create $RCLONE_REMOTE drive config_is_local false
 
 # Help
 

@@ -65,20 +65,18 @@ services:
     volumes:
       - nextcloud:/var/www/html
       - nextcloud-data:/data
-      - backup-config:/config
-      - backup-cache:/cache
-      - backup-repo:/repository
+      - borg-cache:/cache
+      - borg-repo:/repository
+      - borg-config:/config/borg
+      - rclone-config:/config/rclone
+      - certs:/config/certs:ro
+      - signal:/config/signal
       - /etc/localtime:/etc/localtime:ro
     environment:
       - MYSQL_HOST=db
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - BORG_PASSPHRASE=${BORG_PASSPHRASE}
-      - ARCHIVE_PRUNE=${ARCHIVE_PRUNE}
-      - RCLONE_REMOTE=${RCLONE_REMOTE}
-      - RCLONE_DRIVE_CLIENT_ID=${RCLONE_DRIVE_CLIENT_ID}
-      - RCLONE_DRIVE_CLIENT_SECRET=${RCLONE_DRIVE_CLIENT_SECRET}
-      - RCLONE_DRIVE_SCOPE=${RCLONE_DRIVE_SCOPE}
-      - RCLONE_DRIVE_SERVICE_ACCOUNT_FILE=${RCLONE_DRIVE_SERVICE_ACCOUNT_FILE}
+      - RCLONE_REMOTES=${RCLONE_REMOTES}
       - SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
     env_file:
       - db.env
@@ -175,8 +173,10 @@ volumes:
   html:
   signal:
   backup-config:
-  backup-cache:
-  backup-repo:
+  borg-cache:
+  borg-repo:
+  borg-config:
+  rclone-config:
 
 networks:
   proxy-tier:

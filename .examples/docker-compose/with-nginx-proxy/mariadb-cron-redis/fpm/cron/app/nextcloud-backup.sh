@@ -254,12 +254,12 @@ backuplog=$(mktemp)
         do_command dbdump
         do_command borgcreate || exit $?
         do_command maintenancemode off
-        do_command rclone sync
 
-        if [ "$COMMAND" != "nocheck" ]; then
-            do_command rclone check                    # must be before borg check as borg check does change nonce file
-            do_command borgcheck                       # borg check changes nonce file in repo?
-        fi
+        # borg check changes nonce file in repo, sync repo afterwards
+        # only sync repo to cloud if borg check is good
+        do_command borgcheck && do_command rclone sync
+
+        do_command rclone check
     fi
 
     exit $error

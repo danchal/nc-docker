@@ -110,11 +110,19 @@ Try:
 
         $ borg list /repository/nextcloud_xxxxyyyy
 
-3. Then, execute the restore script, e.g.
+1. Then, execute the restore script, e.g.
 
         $ /app/nextcloud-backup.sh restore /repository/nextcloud_xxxxyyyy 2019-01-12T01:23:45 config
 
         Note:
         This will completely overwrite the Nextcloud Data, Configuration and Application. Do a backup before.
         The final parameter is optional, when present the signal and rclone configuration files will also be restored.        
+1. If there are no errors then, shutdown and restart all the containers.
 
+        $ docker-compose down
+        $ docker-compose up -d
+
+1. The Nextcloud instance will still be in maintenance mode, execute the following commands in the cron container:
+
+        $ su www-data -s /bin/sh -c 'php occ maintenance:mode --off'
+        $ su www-data -s /bin/sh -c 'php occ maintenance:data-fingerprint'

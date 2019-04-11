@@ -11,7 +11,7 @@ backuplog=$(mktemp)
     readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")
     readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
     readonly ARCHIVE_NAME="{now:%Y-%m-%dT%H:%M:%S}"
-    readonly ARCHIVE_SOURCES="/config /data /var/www/html/config /var/www/html/custom_apps /var/www/html/themes"
+    readonly ARCHIVE_SOURCES="/config /data /var/www/html"
     readonly ARCHIVE_PRUNE="--keep-within=2d --keep-daily=7 --keep-weekly=4 --keep-monthly=-1"
     export BORG_REPO="${BASE_REPOSITORY}/nextcloud_${NEXTCLOUD_INSTANCEID}"
         
@@ -113,6 +113,7 @@ backuplog=$(mktemp)
 
         borg extract \
             "::${archive}" \
+            --exclude config/borg \
         || { echo "Error extracting archive"; exit 1; }
 
         echo "Restoring archive data files..."
@@ -150,12 +151,9 @@ backuplog=$(mktemp)
               "${MYSQL_DATABASE}" < "$(ls /data/dbdump-*.bak)" \
         || { echo "Error restoring nextcloud database"; exit 1; }
 
-        echo "Run this command to turn off maintenance mode:"
-        echo "su www-data -s /bin/sh -c 'php occ maintenance:mode --off'"
-        echo ""
-        echo "Run this command to update the sytem data-fingerprint:"
-        echo "su www-data -s /bin/sh -c 'php occ maintenance:data-fingerprint'"
-
+        # These commands fail "Could not open input file: occ"
+        #su www-data -s /bin/sh -c 'php occ maintenance:mode --off'
+        #su www-data -s /bin/sh -c 'php occ maintenance:data-fingerprint'
     }
 
     do_init(){

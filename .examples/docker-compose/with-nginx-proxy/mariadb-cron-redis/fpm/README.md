@@ -8,9 +8,9 @@
         Collabora
         Signal Web Gateway
         Cloudflare DDNS
-        Borgbackup
+        Borgbackup with restore
         Rclone
-
+        
 # Setup
 
 ## Environment variables
@@ -62,7 +62,7 @@
 ### Setup Rclone endpoints
 1. Start a bash session in the cron container
 
-        $ docker exec -it <cron> /bin/sh
+        $ docker-compose exec cron sh
 
 1. Setup the rclone endpoint by running the interactive configuration, e.g.
 
@@ -86,25 +86,35 @@ When opening a document, if nothing happens or you get the spinning wheel:
 
 Try:
 
+1. Restart all the docker containers, i.e. docker-compose down && docker-compose up
 1. Re-apply the Collabora Online Server settings in the Nextcloud application.
 1. Restart Collabora server.
 1. Re-create the Nextcloud and Collabora domain certificates.
 
-# Notes
-## Restoring
+# Restoring
 
-docker-compose down
-docker-compose run -d cron
+1. Shutdown all the containers and then run only the cron container with its dependances, i.e. db.
 
-docker exec -it knob_cron_run_1 sh
+        $ docker-compose down
+        $ docker-compose run -d cron
 
-rclone sync gd:nextcloud_ocjst292xjxl /repository/nextcloud_ocjst292xjxl -P
+1. Execute a shell in the previously created cron container, e.g.
 
-borg list /repository/nextcloud_ocjst292xjxl/
+        $ docker exec -it <cron_run container> sh
 
-/app/nextcloud-backup.sh restore /repository/nextcloud_ocjst292xjxl/ 2019-04-10T16:38:05 config
+1. From within the cron container, restore the borgbackup repository, e.g.
 
-mysql -h "${MYSQL_HOST}" \
-              -u "${MYSQL_USER}" \
-              -p"${MYSQL_PASSWORD}" \
-              -e "SELECT version()"
+        $ rclone sync myRemote:nextcloud_xxxxyyyy /repository/nextcloud_xxxxyyyy -P
+
+1. Also, get the archive that you wish to restore, e.g.
+
+        $ borg list /repository/nextcloud_xxxxyyyy
+
+3. Then, execute the restore script, e.g.
+
+        $ /app/nextcloud-backup.sh restore /repository/nextcloud_xxxxyyyy 2019-01-12T01:23:45 config
+
+        Note:
+        This will completely overwrite the Nextcloud Data, Configuration and Application. Do a backup before.
+        The final parameter is optional, when present the signal and rclone configuration files will also be restored.        
+

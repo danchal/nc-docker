@@ -1,5 +1,0 @@
-BORG_PASSCOMMAND="cat /app/bog-passphrase"
-BORG_REPO="/repository/${NEXTCLOUD_INSTANCEID}/nextcloud"
-ARCHIVE_NAME="{hostname}-{now:%Y-%m-%dT%H:%M:%S}"
-ARCHIVE_SOURCE="/data /dbdump"
-ARCHIVE_PRUNE="--keep-daily=7 --keep-weekly=4 --keep-monthly=-1"

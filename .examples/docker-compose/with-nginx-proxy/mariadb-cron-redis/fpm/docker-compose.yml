@@ -65,20 +65,21 @@ services:
     volumes:
       - nextcloud:/var/www/html
       - nextcloud-data:/data
-      - backup-dbdump:/dbdump
-      - backup-config:/config
-      - backup-cache:/cache
-      - backup-repo:/repository
+      - borg-cache:/cache
+      - borg-repo:/repository
+      - borg-config:/config/borg
+      - rclone-config:/config/rclone
+      - certs:/config/certs:ro
+      - signal:/config/signal
       - /etc/localtime:/etc/localtime:ro
     environment:
       - MYSQL_HOST=db
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - RCLONE_REMOTE=${RCLONE_REMOTE}
+      - BORG_PASSPHRASE=${BORG_PASSPHRASE}
+      - RCLONE_REMOTES=${RCLONE_REMOTES}
       - SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
-    hostname: ${COMPOSE_PROJECT_NAME}
     env_file:
       - db.env
-    entrypoint: /app/entry.sh
     depends_on:
       - db
       - redis
@@ -132,13 +133,12 @@ services:
     environment:
       - domain=${DOMAIN_COLLABORA}
       - dictionaries=${DICTIONARIES_COLLABORA}
-      - username=${USERNAME_COLLABORA}
-      - password=${PASSWORD_COLLABORA}
       - VIRTUAL_HOST=${SUBDOMAIN_COLLABORA}
       - VIRTUAL_PORT=9980
       - VIRTUAL_PROTO=https
       - LETSENCRYPT_HOST=${SUBDOMAIN_COLLABORA}
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - extra_params=--o:net.post_allow.host[0]=::ffff:172.[0-9]+.[0-9]+.[0-9]+
     networks:
       - proxy-tier
 
@@ -164,31 +164,6 @@ services:
       - signal:/signal
       - /etc/localtime:/etc/localtime:ro
 
-  fail2ban:
-    build:
-      context: ./fail2ban
-    restart: always
-    network_mode: "host"
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    volumes:
-      - /var/lib/docker/volumes/${COMPOSE_PROJECT_NAME}_nextcloud-data/_data/nextcloud.log:/var/log/nextcloud.log:ro
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - F2B_DEST_EMAIL=${F2B_DEST_EMAIL}
-      - F2B_SENDER=${F2B_SENDER}
-      - SSMTP_HOST=${SSMTP_HOST}
-      - SSMTP_PORT=${SSMTP_PORT}
-      - SSMTP_HOSTNAME=${SSMTP_HOSTNAME}
-      - SSMTP_USER=${SSMTP_USER}
-      - SSMTP_PASSWORD=${SSMTP_PASSWORD}
-      - SSMTP_TLS=${SSMTP_TLS}
-    env_file:
-      - ./fail2ban/fail2ban.env
-    depends_on:
-      - app
-
 volumes:
   db:
   nextcloud:
@@ -198,9 +173,10 @@ volumes:
   html:
   signal:
   backup-config:
-  backup-cache:
-  backup-dbdump:
-  backup-repo:
+  borg-cache:
+  borg-repo:
+  borg-config:
+  rclone-config:
 
 networks:
   proxy-tier:

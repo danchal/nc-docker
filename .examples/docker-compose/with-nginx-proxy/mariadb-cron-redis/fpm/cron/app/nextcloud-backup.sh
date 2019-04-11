@@ -6,6 +6,7 @@ backuplog=$(mktemp)
     readonly COMMAND=$1
     readonly PARAM1=$2
     readonly PARAM2=$3
+    readonly PARAM3=$4
     readonly THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
     readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")
     readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
@@ -35,68 +36,75 @@ backuplog=$(mktemp)
 
     do_validation(){
         echo "Do: validation"
+        local_error=0
 
         # error if not set
         if [ -z "$RCLONE_REMOTES" ]; then
             echo "Environment variable RCLONE_REMOTE not set"
-            error=101
+            local_error=101
         fi
 
         if [ -z "$NEXTCLOUD_INSTANCEID" ]; then
             echo "Environment variable NEXTCLOUD_INSTANCEID not set"
-            error=102
+            local_error=102
         fi
         
         if [ -z "$BASE_REPOSITORY" ]; then
             echo "Environment variable BASE_REPOSITORY not set"
-            error=103
+            local_error=103
         fi
         
         if [ -z "$BORG_REPO" ]; then
             echo "Environment variable BORG_REPO not set"
-            error=104
+            local_error=104
         fi
 
         if [ -z "$BORG_PASSPHRASE" ]; then
             echo "Environment variable BORG_PASSPHRASE not set"
-            error=105
+            local_error=105
         fi
 
         if [ -z "$ARCHIVE_NAME" ]; then
             echo "Environment variable ARCHIVE_NAME not set"
-            error=106
+            local_error=106
         fi
 
         if [ -z "$ARCHIVE_SOURCES" ]; then
             echo "Environment variable ARCHIVE_SOURCES not set"
-            error=107
+            local_error=107
         fi
 
         if [ -z "$ARCHIVE_PRUNE" ]; then
             echo "Environment variable ARCHIVE_PRUNE not set"
-            error=108
+            local_error=108
         fi
 
-        [ $error -ne 0 ] && exit $error
+        [ $local_error -ne 0 ] && exit $local_error
     }
 
     do_restore(){
         export BORG_REPO="$1"
         archive="$2"
+        restore_config="$3"
 
         [ -z "$BORG_REPO" ] && { echo "Error: repository not supplied"; exit 1; }
         [ -d "$BORG_REPO" ] || { echo "Error: repository does not exist <${BORG_REPO}>"; exit 1; }
         [ -z "$archive" ] && { echo "Error: archive not supplied"; exit 1; }
 
         do_command maintenancemode on
-        do_command borgcheck "$archive" || exit $error
+        do_command borgcheck "$archive" || exit $?
         
         echo "Deleting old data files..."
 
-        rm -rf /data/* || exit 1
-        rm -rf /var/www/html/config || exit 1
-        rm -rf /var/www/html/custom_apps || exit 1
-        rm -rf /var/www/html/themes || exit 1
+        cd /data && find . -delete || exit 1
+        cd /var/www/html && find . -delete || exit 1
+        
+        if [ "$restore_config" = "config" ]; then
+            echo "Deleting old config files..."
+            cd /config/signal && find . -delete || exit 1
+            cd /config/borg && find . -delete || exit 1
+            cd /config/rclone && find . -delete || exit 1
+        fi
 
         TMP_EXTRACT=$(mktemp -d /data/tmp_extract.XXXXXX)
         cd "$TMP_EXTRACT" || exit 1
@@ -109,10 +117,14 @@ backuplog=$(mktemp)
 
         echo "Restoring archive data files..."
 
-        mv "${TMP_EXTRACT}"/data/* /data/ || exit 1
-        mv "${TMP_EXTRACT}"/var/www/html/config /var/www/html/ || exit 1
-        mv "${TMP_EXTRACT}"/var/www/html/custom_apps /var/www/html/ || exit 1
-        mv "${TMP_EXTRACT}"/var/www/html/themes /var/www/html/ || exit 1
+        cd "${TMP_EXTRACT}"/data && find . -mindepth 1 -maxdepth 1 -exec mv {} /data/ \; || exit 1
+        cd "${TMP_EXTRACT}"/var/www/html && find . -mindepth 1 -maxdepth 1 -exec mv {} /var/www/html/ \; || exit 1
+        
+        if [ "$restore_config" = "config" ]; then
+            echo "Restoring archive config files..."
+            cd "${TMP_EXTRACT}"/config/signal && find . -mindepth 1 -maxdepth 1 -exec mv {} /config/signal/ \; || exit 1
+            cd "${TMP_EXTRACT}"/config/rclone && find . -mindepth 1 -maxdepth 1 -exec mv {} /config/rclone/ \; || exit 1
+        fi
 
         echo "Dropping old database..."
 
@@ -149,7 +161,7 @@ backuplog=$(mktemp)
     do_init(){
         # if repository directory does not exist then initialise it
         if [ ! -d  "$BORG_REPO" ]; then
-            do_command borginit || exit $error
+            do_command borginit || exit $?
         fi
     }
 
@@ -157,20 +169,21 @@ backuplog=$(mktemp)
         echo "Do: $*"
         command=$1
         p1=$2
+        local_error=0
 
         case ${command} in
             borginit)
                 borg init \
                     --info \
                     --encryption=repokey-blake2 \
-                || error=109
+                || local_error=109
                 ;;
 
             borgprune)
                 borg prune \
                     --info \
                     ${ARCHIVE_PRUNE} \
-                || error=110
+                || local_error=110
                 ;;
 
             borgcreate)
@@ -179,7 +192,7 @@ backuplog=$(mktemp)
                     --exclude data/.opcache \
                     "::${ARCHIVE_NAME}" \
                     ${ARCHIVE_SOURCES} \
-                || error=111
+                || local_error=111
                 ;;
 
             borgcheck)
@@ -187,7 +200,7 @@ backuplog=$(mktemp)
                     --info \
                     --verify-data \
                     ${p1:+"::${p1}"} \
-                || error=112
+                || local_error=112
                 ;;
 
             rclone)
@@ -198,13 +211,13 @@ backuplog=$(mktemp)
                     rclone "${p1}" \
                         "${BORG_REPO}" \
                         "${rclone_remote}/nextcloud_${NEXTCLOUD_INSTANCEID}" \
-                    || error=120
+                    || local_error=120
                 done
                 ;;
 
             maintenancemode)
                 su www-data -s /bin/sh -c "php occ maintenance:mode --${p1}" \
-                || error=130
+                || local_error=130
                 ;;
 
             dbdump)
@@ -215,14 +228,18 @@ backuplog=$(mktemp)
                     -u "${MYSQL_USER}" \
                     -p"${MYSQL_PASSWORD}" \
                     "${MYSQL_DATABASE}" \
-                || error=131
+                || local_error=131
                 ;;
 
             *)
                 echo "unknown command<${command}>"
                 exit 199
         esac
-        return $error
+
+        [ $local_error -ne 0 ] && error=$local_error
+
+        echo "Do: $* - returning<$local_error>"
+        return $local_error
     }
 
     echo "Start $0 command<$*>"
@@ -230,14 +247,14 @@ backuplog=$(mktemp)
     do_validation
 
     if [ "$COMMAND" = "restore" ]; then
-        do_restore "$PARAM1" "$PARAM2"
+        do_restore "$PARAM1" "$PARAM2" "$PARAM3"
 
     else
         do_init
         do_command borgprune
         do_command maintenancemode on
         do_command dbdump
-        do_command borgcreate || exit $error
+        do_command borgcreate || exit $?
         do_command maintenancemode off
         do_command rclone sync
 

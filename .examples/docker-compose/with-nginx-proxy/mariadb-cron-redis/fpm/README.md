@@ -92,12 +92,17 @@ Try:
 
 # Notes
 ## Restoring
+
+docker-compose down
+docker-compose run -d cron
+
+docker exec -it knob_cron_run_1 sh
+
 rclone sync gd:nextcloud_ocjst292xjxl /repository/nextcloud_ocjst292xjxl -P
 
 borg list /repository/nextcloud_ocjst292xjxl/
 
-/app/nextcloud-backup.sh restore /repository/nextcloud_ocjst292xjxl/ 2019-04-10T16:38:05
-
+/app/nextcloud-backup.sh restore /repository/nextcloud_ocjst292xjxl/ 2019-04-10T16:38:05 config
 
 mysql -h "${MYSQL_HOST}" \
               -u "${MYSQL_USER}" \

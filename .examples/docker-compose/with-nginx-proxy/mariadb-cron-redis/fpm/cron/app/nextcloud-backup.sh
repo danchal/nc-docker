@@ -8,16 +8,16 @@ backuplog=$(mktemp)
     readonly PARAM2=$3
     readonly PARAM3=$4
     readonly THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
-    readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")
+    readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php /var/www/html/occ config:system:get instanceid")
     readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
     readonly ARCHIVE_NAME="{now:%Y-%m-%dT%H:%M:%S}"
-    readonly ARCHIVE_SOURCES="/config /data /var/www/html"
+    readonly ARCHIVE_SOURCES="/config /data /var/www/html/config /var/www/html/custom_apps /var/www/html/themes"
     readonly ARCHIVE_PRUNE="--keep-within=2d --keep-daily=7 --keep-weekly=4 --keep-monthly=-1"
     export BORG_REPO="${BASE_REPOSITORY}/nextcloud_${NEXTCLOUD_INSTANCEID}"
         
     error=0
     trap 'do_exit ${?}' INT TERM EXIT
-
+    
     do_exit(){
         LASTERR="$1"
         message="PASS - ${THE_DATE} - Backup"
@@ -91,13 +91,15 @@ backuplog=$(mktemp)
         [ -d "$BORG_REPO" ] || { echo "Error: repository does not exist <${BORG_REPO}>"; exit 1; }
         [ -z "$archive" ] && { echo "Error: archive not supplied"; exit 1; }
 
-        do_command maintenancemode on
+        do_command maintenancemode on || exit $?
         do_command borgcheck "$archive" || exit $?
         
         echo "Deleting old data files..."
 
         cd /data && find . -delete || exit 1
-        cd /var/www/html && find . -delete || exit 1
+        rm -rf /var/www/html/custom_apps || exit 1
+        rm -rf /var/www/html/config || exit 1
+        rm -rf /var/www/html/themes || exit 1
         
         if [ "$restore_config" = "config" ]; then
             echo "Deleting old config files..."
@@ -118,42 +120,54 @@ backuplog=$(mktemp)
 
         echo "Restoring archive data files..."
 
-        cd "${TMP_EXTRACT}"/data && find . -mindepth 1 -maxdepth 1 -exec mv {} /data/ \; || exit 1
-        cd "${TMP_EXTRACT}"/var/www/html && find . -mindepth 1 -maxdepth 1 -exec mv {} /var/www/html/ \; || exit 1
-        
+        cd "${TMP_EXTRACT}"/data && find . -mindepth 1 -maxdepth 1 -exec mv {} /data/ \; || exit 1      
+        mv "${TMP_EXTRACT}"/var/www/html/custom_apps /var/www/html/ || exit 1
+        mv "${TMP_EXTRACT}"/var/www/html/config /var/www/html/ || exit 1
+        mv "${TMP_EXTRACT}"/var/www/html/themes /var/www/html/ || exit 1
+
         if [ "$restore_config" = "config" ]; then
             echo "Restoring archive config files..."
             cd "${TMP_EXTRACT}"/config/signal && find . -mindepth 1 -maxdepth 1 -exec mv {} /config/signal/ \; || exit 1
             cd "${TMP_EXTRACT}"/config/rclone && find . -mindepth 1 -maxdepth 1 -exec mv {} /config/rclone/ \; || exit 1
         fi
 
-        echo "Dropping old database..."
+        # get the name of the database backup file
+        dbdump_file="$(ls /data/dbdump-*.bak)"
 
-        mysql -h "${MYSQL_HOST}" \
-              -u "${MYSQL_USER}" \
-              -p"${MYSQL_PASSWORD}" \
-              -e "DROP DATABASE ${MYSQL_DATABASE}" \
-        || { echo "Error dropping nextcloud database"; exit 1; }
+        # restore database if backup exists
+        if [ -f "$dbdump_file" ]; then
+            echo "Dropping old database..."
 
-        echo "Creating new database..."
+            mysql -h "${MYSQL_HOST}" \
+                -u "${MYSQL_USER}" \
+                -p"${MYSQL_PASSWORD}" \
+                -e "DROP DATABASE ${MYSQL_DATABASE}" \
+            || { echo "Error dropping nextcloud database"; exit 1; }
 
-        mysql -h "${MYSQL_HOST}" \
-              -u "${MYSQL_USER}" \
-              -p"${MYSQL_PASSWORD}" \
-              -e "CREATE DATABASE ${MYSQL_DATABASE}" \
-        || { echo "Error creating nextcloud database"; exit 1; }
+            echo "Creating new database..."
 
-        echo "Restoring archive database..."
+            mysql -h "${MYSQL_HOST}" \
+                -u "${MYSQL_USER}" \
+                -p"${MYSQL_PASSWORD}" \
+                -e "CREATE DATABASE ${MYSQL_DATABASE}" \
+            || { echo "Error creating nextcloud database"; exit 1; }
 
-        mysql -h "${MYSQL_HOST}" \
-              -u "${MYSQL_USER}" \
-              -p"${MYSQL_PASSWORD}" \
-              "${MYSQL_DATABASE}" < "$(ls /data/dbdump-*.bak)" \
-        || { echo "Error restoring nextcloud database"; exit 1; }
+            echo "Restoring archive database..."
+
+            mysql -h "${MYSQL_HOST}" \
+                -u "${MYSQL_USER}" \
+                -p"${MYSQL_PASSWORD}" \
+                "${MYSQL_DATABASE}" < "$dbdump_file" \
+            || { echo "Error restoring nextcloud database"; exit 1; }
+        else
+            echo "Warning: backup of database does not exist. Manual scan of files is required"
+            su www-data -s /bin/sh -c 'php /var/www/html/occ files:scan --all'
+        fi
 
         # These commands fail "Could not open input file: occ"
-        #su www-data -s /bin/sh -c 'php occ maintenance:mode --off'
-        #su www-data -s /bin/sh -c 'php occ maintenance:data-fingerprint'
+        su www-data -s /bin/sh -c 'php /var/www/html/occ maintenance:mode --off'
+        su www-data -s /bin/sh -c 'php /var/www/html/occ maintenance:data-fingerprint'
+        
     }
 
     do_init(){
@@ -188,6 +202,8 @@ backuplog=$(mktemp)
                 borg create \
                     --info \
                     --exclude data/.opcache \
+                    --exclude data/*.log \
+                    --exclude data/appdata_*/previews \
                     "::${ARCHIVE_NAME}" \
                     ${ARCHIVE_SOURCES} \
                 || local_error=111
@@ -214,7 +230,7 @@ backuplog=$(mktemp)
                 ;;
 
             maintenancemode)
-                su www-data -s /bin/sh -c "php occ maintenance:mode --${p1}" \
+                su www-data -s /bin/sh -c "php /var/www/html/occ maintenance:mode --${p1}" \
                 || local_error=130
                 ;;
 

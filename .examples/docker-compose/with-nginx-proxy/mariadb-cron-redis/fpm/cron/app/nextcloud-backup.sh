@@ -3,10 +3,10 @@
 # send all output to temporary log file + also to terminal
 backuplog=$(mktemp)
 {
-    readonly COMMAND=$1
-    readonly PARAM1=$2
-    readonly PARAM2=$3
-    readonly PARAM3=$4
+    readonly PARAM1=$1
+    readonly PARAM2=$2
+    readonly PARAM3=$3
+    readonly PARAM4=$4
     readonly THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
     readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php /var/www/html/occ config:system:get instanceid")
     readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
@@ -14,21 +14,28 @@ backuplog=$(mktemp)
     readonly ARCHIVE_SOURCES="/config /data /var/www/html/config /var/www/html/custom_apps /var/www/html/themes"
     readonly ARCHIVE_PRUNE="--keep-within=2d --keep-daily=7 --keep-weekly=4 --keep-monthly=-1"
     export BORG_REPO="${BASE_REPOSITORY}/nextcloud_${NEXTCLOUD_INSTANCEID}"
-        
+
+    # No one can answer if Borg asks these questions, it is better to just fail quickly
+    # instead of hanging.
+    export BORG_RELOCATED_REPO_ACCESS_IS_OK=no
+    export BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=no        
+    
     error=0
-    trap 'do_exit ${?}' INT TERM EXIT
     
     do_exit(){
         LASTERR="$1"
-        message="PASS - ${THE_DATE} - Backup"
+        short_message="PASS - ${THE_DATE} - Backup"
+        long_message="$(cat "${backuplog}")"
 
         if [ "$LASTERR" -ne 0 ]; then
             do_command maintenancemode off
-            message="FAILED - ${THE_DATE} - [${LASTERR}] Backup"
+            short_message="FAILED - ${THE_DATE} - [${LASTERR}] Backup"
         fi
 
-        echo "$message"
-        /app/signal.sh "$(cat "${backuplog}")"
+        echo "$short_message"
+
+        su www-data -s /bin/sh -c "php /var/www/html/occ notification:generate --long-message '${long_message}' ${NEXTCLOUD_ADMIN_USER} '${short_message}'"
+        /app/signal.sh "${long_message} - ${short_message}"
         [ -e "$backuplog" ] && rm -f "$backuplog"
         [ -e "$DBFILE" ] && rm -f "$DBFILE"
         exit "$LASTERR"
@@ -82,6 +89,12 @@ backuplog=$(mktemp)
         [ $local_error -ne 0 ] && exit $local_error
     }
 
+    do_list_archives(){
+        borg list \
+            --short \
+            $1
+    }
+
     do_restore(){
         export BORG_REPO="$1"
         archive="$2"
@@ -89,7 +102,12 @@ backuplog=$(mktemp)
 
         [ -z "$BORG_REPO" ] && { echo "Error: repository not supplied"; exit 1; }
         [ -d "$BORG_REPO" ] || { echo "Error: repository does not exist <${BORG_REPO}>"; exit 1; }
-        [ -z "$archive" ] && { echo "Error: archive not supplied"; exit 1; }
+        [ -z "$archive" ] \
+        && { 
+                echo "Warning: archive not supplied:"; \
+                do_list_archives "${BORG_REPO}"; \
+                exit 0; 
+            }
 
         do_command maintenancemode on || exit $?
         do_command borgcheck "$archive" || exit $?
@@ -258,12 +276,16 @@ backuplog=$(mktemp)
 
     echo "Start $0 command<$*>"
 
+    # Log Borg version
+    borg --version
+
     do_validation
 
-    if [ "$COMMAND" = "restore" ]; then
-        do_restore "$PARAM1" "$PARAM2" "$PARAM3"
+    if [ "$PARAM1" = "restore" ]; then
+        do_restore "$PARAM2" "$PARAM3" "$PARAM4"
 
     else
+        trap 'do_exit ${?}' INT TERM EXIT
         do_init
         do_command borgprune
         do_command maintenancemode on
@@ -271,11 +293,12 @@ backuplog=$(mktemp)
         do_command borgcreate || exit $?
         do_command maintenancemode off
 
-        # borg check changes nonce file in repo, sync repo afterwards
-        # only sync repo to cloud if borg check is good
-        do_command borgcheck && do_command rclone sync
-
-        do_command rclone check
+        if [ "$PARAM1" != 'nocheck' ]; then
+            # borg check changes nonce file in repo, sync repo afterwards
+            # only sync repo to cloud if borg check is good
+            do_command borgcheck && do_command rclone sync
+            do_command rclone check
+        fi
     fi
 
     exit $error

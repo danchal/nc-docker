@@ -34,8 +34,6 @@ COPY app /app
 # global environment settings
 ENV BORG_CACHE_DIR=/cache
 ENV BORG_CONFIG_DIR=/config/borg
-ENV BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=no
-ENV BORG_RELOCATED_REPO_ACCESS_IS_OK=no
 ENV BASE_REPOSITORY=/repository
 ENV RCLONE_CONFIG=/config/rclone/rclone.conf
 ENV RCLONE_DRIVE_USE_TRASH=false

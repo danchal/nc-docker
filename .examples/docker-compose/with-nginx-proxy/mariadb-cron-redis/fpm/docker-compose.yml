@@ -82,6 +82,7 @@ services:
       - BORG_PASSPHRASE=${BORG_PASSPHRASE}
       - RCLONE_REMOTES=${RCLONE_REMOTES}
       - SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
     env_file:
       - db.env
     depends_on:

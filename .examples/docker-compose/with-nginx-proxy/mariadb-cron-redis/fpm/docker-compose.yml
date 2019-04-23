@@ -3,6 +3,7 @@ version: '3.2'
 services:
   db:
     image: mariadb
+    container_name: db
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
     restart: always
     volumes:
@@ -23,6 +24,7 @@ services:
       context: ./app
       args:
         - nextcloud_subdomain=${SUBDOMAIN_NEXTCLOUD}
+    container_name: app
     restart: always
     volumes:
       - nextcloud:/var/www/html
@@ -44,6 +46,7 @@ services:
 
   web:
     build: ./web
+    container_name: web
     restart: always
     volumes:
       - nextcloud:/var/www/html:ro
@@ -61,6 +64,7 @@ services:
   cron:
     build:
       context: ./cron
+    container_name: cron
     restart: always
     volumes:
       - nextcloud:/var/www/html
@@ -78,6 +82,7 @@ services:
       - BORG_PASSPHRASE=${BORG_PASSPHRASE}
       - RCLONE_REMOTES=${RCLONE_REMOTES}
       - SIGNAL_CLIENT_NO=${SIGNAL_CLIENT_NO}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
     env_file:
       - db.env
     depends_on:
@@ -90,6 +95,7 @@ services:
       args:
         - subdomain_nextcloud=${SUBDOMAIN_NEXTCLOUD}
         - subdomain_collabora=${SUBDOMAIN_COLLABORA}
+    container_name: proxy
     restart: always
     ports:
       - 80:80
@@ -107,6 +113,7 @@ services:
 
   letsencrypt-companion:
     image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: letsencrypt-companion
     restart: always
     volumes:
       - certs:/etc/nginx/certs
@@ -123,6 +130,7 @@ services:
 
   collabora:
     image: collabora/code
+    container_name: collabora
     restart: always
     expose:
       - 9980
@@ -144,6 +152,7 @@ services:
 
   cloudflare-ddns:
     image: joshava/cloudflare-ddns
+    container_name: cloudflare-ddns
     restart: always
     volumes:
       - /etc/localtime:/etc/localtime:ro
@@ -157,6 +166,7 @@ services:
 
   signal-web-gateway:
     image: registry.gitlab.com/morph027/signal-web-gateway:master
+    container_name: signal-web-gateway
     restart: always
     expose:
       - 5000

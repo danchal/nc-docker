@@ -3,34 +3,45 @@
 # send all output to temporary log file + also to terminal
 backuplog=$(mktemp)
 {
-    readonly COMMAND=$1
-    readonly PARAM1=$2
-    readonly PARAM2=$3
-    readonly PARAM3=$4
-    readonly THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
-    readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php occ config:system:get instanceid")
-    readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
-    readonly ARCHIVE_NAME="{now:%Y-%m-%dT%H:%M:%S}"
-    readonly ARCHIVE_SOURCES="/config /data /var/www/html"
+    readonly PARAM1=$1
+    readonly PARAM2=$2
+    readonly PARAM3=$3
+    readonly PARAM4=$4
+    readonly THE_DATE=$(date '+%Y-%m-%dT%H.%M.%S')
+    readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php /var/www/html/occ config:system:get instanceid")
+    readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_${THE_DATE}.bak"
+    readonly ARCHIVE_NAME="${THE_DATE}"
+    readonly ARCHIVE_SOURCES="/config /data /var/www/html/config /var/www/html/custom_apps /var/www/html/themes"
     readonly ARCHIVE_PRUNE="--keep-within=2d --keep-daily=7 --keep-weekly=4 --keep-monthly=-1"
     export BORG_REPO="${BASE_REPOSITORY}/nextcloud_${NEXTCLOUD_INSTANCEID}"
-        
+
+    # No one can answer if Borg asks these questions, it is better to just fail quickly
+    # instead of hanging.
+    export BORG_RELOCATED_REPO_ACCESS_IS_OK=no
+    export BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=no        
+    
     error=0
     trap 'do_exit ${?}' INT TERM EXIT
 
     do_exit(){
         LASTERR="$1"
-        message="PASS - ${THE_DATE} - Backup"
+        short_message="PASS - ${THE_DATE} - Backup"
+        long_message="$(cat "${backuplog}")"
 
         if [ "$LASTERR" -ne 0 ]; then
             do_command maintenancemode off
-            message="FAILED - ${THE_DATE} - [${LASTERR}] Backup"
+            short_message="FAILED - ${THE_DATE} - [${LASTERR}] Backup"
         fi
 
-        echo "$message"
-        /app/signal.sh "$(cat "${backuplog}")"
-        [ -e "$backuplog" ] && rm -f "$backuplog"
-        [ -e "$DBFILE" ] && rm -f "$DBFILE"
+        echo "$short_message"
+
+        su www-data -s /bin/sh -c "php /var/www/html/occ notification:generate --long-message '${long_message}' ${NEXTCLOUD_ADMIN_USER} '${short_message}'"
+        /app/signal.sh "${long_message} - ${short_message}"
+        [ -f "$backuplog" ] && rm -f "$backuplog"
+        [ -f "$DBFILE" ] && rm -f "$DBFILE"
+        [ -d "${TMP_EXTRACT}" ] && rm -rf "${TMP_EXTRACT}"
+        [ -f "$dbdump_file" ] && rm -f "$dbdump_file"
+
         exit "$LASTERR"
     }
 
@@ -79,7 +90,13 @@ backuplog=$(mktemp)
             local_error=108
         fi
 
-        [ $local_error -ne 0 ] && exit $local_error
+        return $local_error
+    }
+
+    do_list_archives(){
+        borg list \
+            --short \
+            "${BORG_REPO}"
     }
 
     do_restore(){
@@ -89,15 +106,22 @@ backuplog=$(mktemp)
 
         [ -z "$BORG_REPO" ] && { echo "Error: repository not supplied"; exit 1; }
         [ -d "$BORG_REPO" ] || { echo "Error: repository does not exist <${BORG_REPO}>"; exit 1; }
-        [ -z "$archive" ] && { echo "Error: archive not supplied"; exit 1; }
+        [ -z "$archive" ] \
+        && { 
+                echo "Warning: archive not supplied:"; \
+                do_list_archives; \
+                exit 0; 
+            }
 
-        do_command maintenancemode on
         do_command borgcheck "$archive" || exit $?
-        
+        do_command maintenancemode on || exit $?
+                
         echo "Deleting old data files..."
 
         cd /data && find . -delete || exit 1
-        cd /var/www/html && find . -delete || exit 1
+        rm -rf /var/www/html/custom_apps || exit 1
+        rm -rf /var/www/html/config || exit 1
+        rm -rf /var/www/html/themes || exit 1
         
         if [ "$restore_config" = "config" ]; then
             echo "Deleting old config files..."
@@ -106,7 +130,7 @@ backuplog=$(mktemp)
             cd /config/rclone && find . -delete || exit 1
         fi
 
-        TMP_EXTRACT=$(mktemp -d /data/tmp_extract.XXXXXX)
+        readonly TMP_EXTRACT=$(mktemp -d /data/tmp_extract.XXXXXX)
         cd "$TMP_EXTRACT" || exit 1
         
         echo "Extracting archive data files..."
@@ -118,42 +142,54 @@ backuplog=$(mktemp)
 
         echo "Restoring archive data files..."
 
-        cd "${TMP_EXTRACT}"/data && find . -mindepth 1 -maxdepth 1 -exec mv {} /data/ \; || exit 1
-        cd "${TMP_EXTRACT}"/var/www/html && find . -mindepth 1 -maxdepth 1 -exec mv {} /var/www/html/ \; || exit 1
-        
+        cd "${TMP_EXTRACT}"/data && find . -mindepth 1 -maxdepth 1 -exec mv {} /data/ \; || exit 1      
+        mv "${TMP_EXTRACT}"/var/www/html/custom_apps /var/www/html/ || exit 1
+        mv "${TMP_EXTRACT}"/var/www/html/config /var/www/html/ || exit 1
+        mv "${TMP_EXTRACT}"/var/www/html/themes /var/www/html/ || exit 1
+
         if [ "$restore_config" = "config" ]; then
             echo "Restoring archive config files..."
             cd "${TMP_EXTRACT}"/config/signal && find . -mindepth 1 -maxdepth 1 -exec mv {} /config/signal/ \; || exit 1
             cd "${TMP_EXTRACT}"/config/rclone && find . -mindepth 1 -maxdepth 1 -exec mv {} /config/rclone/ \; || exit 1
         fi
 
-        echo "Dropping old database..."
+        # get the name of the database backup file
+        readonly dbdump_file="$(ls /data/dbdump-*.bak)"
 
-        mysql -h "${MYSQL_HOST}" \
-              -u "${MYSQL_USER}" \
-              -p"${MYSQL_PASSWORD}" \
-              -e "DROP DATABASE ${MYSQL_DATABASE}" \
-        || { echo "Error dropping nextcloud database"; exit 1; }
+        # restore database if backup exists
+        if [ -f "$dbdump_file" ]; then
+            echo "Dropping old database..."
 
-        echo "Creating new database..."
+            mysql -h "${MYSQL_HOST}" \
+                -u "${MYSQL_USER}" \
+                -p"${MYSQL_PASSWORD}" \
+                -e "DROP DATABASE ${MYSQL_DATABASE}" \
+            || { echo "Error dropping nextcloud database"; exit 1; }
 
-        mysql -h "${MYSQL_HOST}" \
-              -u "${MYSQL_USER}" \
-              -p"${MYSQL_PASSWORD}" \
-              -e "CREATE DATABASE ${MYSQL_DATABASE}" \
-        || { echo "Error creating nextcloud database"; exit 1; }
+            echo "Creating new database..."
 
-        echo "Restoring archive database..."
+            mysql -h "${MYSQL_HOST}" \
+                -u "${MYSQL_USER}" \
+                -p"${MYSQL_PASSWORD}" \
+                -e "CREATE DATABASE ${MYSQL_DATABASE}" \
+            || { echo "Error creating nextcloud database"; exit 1; }
 
-        mysql -h "${MYSQL_HOST}" \
-              -u "${MYSQL_USER}" \
-              -p"${MYSQL_PASSWORD}" \
-              "${MYSQL_DATABASE}" < "$(ls /data/dbdump-*.bak)" \
-        || { echo "Error restoring nextcloud database"; exit 1; }
+            echo "Restoring archive database..."
+
+            mysql -h "${MYSQL_HOST}" \
+                -u "${MYSQL_USER}" \
+                -p"${MYSQL_PASSWORD}" \
+                "${MYSQL_DATABASE}" < "$dbdump_file" \
+            || { echo "Error restoring nextcloud database"; exit 1; }
+
+        else
+            echo "Warning: backup of database does not exist. Manual scan of files is required"
+            su www-data -s /bin/sh -c 'php /var/www/html/occ files:scan --all'
+        fi
 
         # These commands fail "Could not open input file: occ"
-        #su www-data -s /bin/sh -c 'php occ maintenance:mode --off'
-        #su www-data -s /bin/sh -c 'php occ maintenance:data-fingerprint'
+        su www-data -s /bin/sh -c 'php /var/www/html/occ maintenance:mode --off'
+        su www-data -s /bin/sh -c 'php /var/www/html/occ maintenance:data-fingerprint'  
     }
 
     do_init(){
@@ -188,6 +224,8 @@ backuplog=$(mktemp)
                 borg create \
                     --info \
                     --exclude data/.opcache \
+                    --exclude data/*.log \
+                    --exclude data/appdata_*/previews \
                     "::${ARCHIVE_NAME}" \
                     ${ARCHIVE_SOURCES} \
                 || local_error=111
@@ -214,7 +252,7 @@ backuplog=$(mktemp)
                 ;;
 
             maintenancemode)
-                su www-data -s /bin/sh -c "php occ maintenance:mode --${p1}" \
+                su www-data -s /bin/sh -c "php /var/www/html/occ maintenance:mode --${p1}" \
                 || local_error=130
                 ;;
 
@@ -242,10 +280,13 @@ backuplog=$(mktemp)
 
     echo "Start $0 command<$*>"
 
-    do_validation
+    # Log Borg version
+    borg --version
 
-    if [ "$COMMAND" = "restore" ]; then
-        do_restore "$PARAM1" "$PARAM2" "$PARAM3"
+    do_validation || exit $?
+
+    if [ "$PARAM1" = "restore" ]; then
+        do_restore "$PARAM2" "$PARAM3" "$PARAM4"
 
     else
         do_init
@@ -255,11 +296,13 @@ backuplog=$(mktemp)
         do_command borgcreate || exit $?
         do_command maintenancemode off
 
-        # borg check changes nonce file in repo, sync repo afterwards
-        # only sync repo to cloud if borg check is good
-        do_command borgcheck && do_command rclone sync
-
-        do_command rclone check
+        if [ "$PARAM1" != 'nocheck' ]; then
+            # borg check changes nonce file in repo, sync repo afterwards
+            # only sync repo to cloud if borg check is good
+            do_command borgcheck \
+                && do_command rclone sync \
+                && do_command rclone check
+        fi
     fi
 
     exit $error

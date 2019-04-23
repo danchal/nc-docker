@@ -44,17 +44,14 @@ services:
       - db
       - redis
 
-  web:
+  nextcloud:
     build: ./web
-    container_name: web
+    container_name: nextcloud
+    hostname: nextcloud
     restart: always
     volumes:
       - nextcloud:/var/www/html:ro
       - /etc/localtime:/etc/localtime:ro
-    environment:
-      - VIRTUAL_HOST=${SUBDOMAIN_NEXTCLOUD}
-      - LETSENCRYPT_HOST=${SUBDOMAIN_NEXTCLOUD}
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
     depends_on:
       - app
     networks:
@@ -73,7 +70,7 @@ services:
       - borg-repo:/repository
       - borg-config:/config/borg
       - rclone-config:/config/rclone
-      - certs:/config/certs:ro
+      - lecerts:/config/certs:ro
       - signal:/config/signal
       - /etc/localtime:/etc/localtime:ro
     environment:
@@ -89,48 +86,38 @@ services:
       - db
       - redis
 
-  proxy:
+  letsencrypt:
     build:
-      context: ./proxy
+      context: ./letsencrypt
       args:
-        - subdomain_nextcloud=${SUBDOMAIN_NEXTCLOUD}
-        - subdomain_collabora=${SUBDOMAIN_COLLABORA}
-    container_name: proxy
+        dns_cloudflare_email: ${CLOUDFLARE_EMAIL}
+        dns_cloudflare_api_key: ${CLOUDFLARE_API}
     restart: always
     ports:
       - 80:80
       - 443:443
-    labels:
-      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    cap_add:
+      - NET_ADMIN
     volumes:
-      - certs:/etc/nginx/certs:ro
-      - vhost.d:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - /etc/localtime:/etc/localtime:ro
-    networks:
-      - proxy-tier
-
-  letsencrypt-companion:
-    image: jrcs/letsencrypt-nginx-proxy-companion
-    container_name: letsencrypt-companion
-    restart: always
-    volumes:
-      - certs:/etc/nginx/certs
-      - vhost.d:/etc/nginx/vhost.d
-      - html:/usr/share/nginx/html
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /etc/localtime:/etc/localtime:ro
+      - lecerts:/config
     environment:
-      - ACME_CA_URI=${ACME_CA_URI:-https://acme-v01.api.letsencrypt.org/directory}
+      - PGID=${PGID}
+      - PUID=${PUID}
+      - EMAIL=${LE_EMAIL}
+      - URL=${LE_URL}
+      - SUBDOMAINS=${LE_SUBDOMAINS}
+      - ONLY_SUBDOMAINS=${LE_ONLY_SUBDOMAINS}
+      - VALIDATION=dns
+      - DNSPLUGIN=cloudflare
+      - STAGING=false
+      - TZ=${LE_TZ}
     networks:
       - proxy-tier
-    depends_on:
-      - proxy
 
   collabora:
     image: collabora/code
     container_name: collabora
+    hostname: collabora
     restart: always
     expose:
       - 9980
@@ -178,9 +165,7 @@ volumes:
   db:
   nextcloud:
   nextcloud-data:
-  certs:
-  vhost.d:
-  html:
+  lecerts:
   signal:
   backup-config:
   borg-cache:

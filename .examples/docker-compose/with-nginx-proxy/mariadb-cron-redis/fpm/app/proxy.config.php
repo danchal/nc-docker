@@ -1,6 +1,6 @@
 <?php
 $CONFIG = array (
-  'trusted_proxies' => ['proxy'],
+  'trusted_proxies' => ['letsencrypt'],
   'overwritehost' => 'nextcloud.example.com',
   'overwriteprotocol' => 'https',
   'overwrite.cli.url' => 'https://nextcloud.example.com/',

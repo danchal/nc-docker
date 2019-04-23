@@ -7,10 +7,10 @@ backuplog=$(mktemp)
     readonly PARAM2=$2
     readonly PARAM3=$3
     readonly PARAM4=$4
-    readonly THE_DATE=$(date '+%a %d-%b-%Y %T %Z')
+    readonly THE_DATE=$(date '+%Y-%m-%dT%H.%M.%S')
     readonly NEXTCLOUD_INSTANCEID=$(su www-data -s /bin/sh -c "php /var/www/html/occ config:system:get instanceid")
-    readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_$(date +"%Y%m%d%H%M%S").bak"
-    readonly ARCHIVE_NAME="{now:%Y-%m-%dT%H:%M:%S}"
+    readonly DBFILE="/data/dbdump-${NEXTCLOUD_INSTANCEID}_${THE_DATE}.bak"
+    readonly ARCHIVE_NAME="${THE_DATE}"
     readonly ARCHIVE_SOURCES="/config /data /var/www/html/config /var/www/html/custom_apps /var/www/html/themes"
     readonly ARCHIVE_PRUNE="--keep-within=2d --keep-daily=7 --keep-weekly=4 --keep-monthly=-1"
     export BORG_REPO="${BASE_REPOSITORY}/nextcloud_${NEXTCLOUD_INSTANCEID}"
@@ -21,7 +21,8 @@ backuplog=$(mktemp)
     export BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=no        
     
     error=0
-    
+    trap 'do_exit ${?}' INT TERM EXIT
+
     do_exit(){
         LASTERR="$1"
         short_message="PASS - ${THE_DATE} - Backup"
@@ -36,8 +37,11 @@ backuplog=$(mktemp)
 
         su www-data -s /bin/sh -c "php /var/www/html/occ notification:generate --long-message '${long_message}' ${NEXTCLOUD_ADMIN_USER} '${short_message}'"
         /app/signal.sh "${long_message} - ${short_message}"
-        [ -e "$backuplog" ] && rm -f "$backuplog"
-        [ -e "$DBFILE" ] && rm -f "$DBFILE"
+        [ -f "$backuplog" ] && rm -f "$backuplog"
+        [ -f "$DBFILE" ] && rm -f "$DBFILE"
+        [ -d "${TMP_EXTRACT}" ] && rm -rf "${TMP_EXTRACT}"
+        [ -f "$dbdump_file" ] && rm -f "$dbdump_file"
+
         exit "$LASTERR"
     }
 
@@ -86,13 +90,13 @@ backuplog=$(mktemp)
             local_error=108
         fi
 
-        [ $local_error -ne 0 ] && exit $local_error
+        return $local_error
     }
 
     do_list_archives(){
         borg list \
             --short \
-            $1
+            "${BORG_REPO}"
     }
 
     do_restore(){
@@ -105,13 +109,13 @@ backuplog=$(mktemp)
         [ -z "$archive" ] \
         && { 
                 echo "Warning: archive not supplied:"; \
-                do_list_archives "${BORG_REPO}"; \
+                do_list_archives; \
                 exit 0; 
             }
 
-        do_command maintenancemode on || exit $?
         do_command borgcheck "$archive" || exit $?
-        
+        do_command maintenancemode on || exit $?
+                
         echo "Deleting old data files..."
 
         cd /data && find . -delete || exit 1
@@ -126,7 +130,7 @@ backuplog=$(mktemp)
             cd /config/rclone && find . -delete || exit 1
         fi
 
-        TMP_EXTRACT=$(mktemp -d /data/tmp_extract.XXXXXX)
+        readonly TMP_EXTRACT=$(mktemp -d /data/tmp_extract.XXXXXX)
         cd "$TMP_EXTRACT" || exit 1
         
         echo "Extracting archive data files..."
@@ -150,7 +154,7 @@ backuplog=$(mktemp)
         fi
 
         # get the name of the database backup file
-        dbdump_file="$(ls /data/dbdump-*.bak)"
+        readonly dbdump_file="$(ls /data/dbdump-*.bak)"
 
         # restore database if backup exists
         if [ -f "$dbdump_file" ]; then
@@ -177,6 +181,7 @@ backuplog=$(mktemp)
                 -p"${MYSQL_PASSWORD}" \
                 "${MYSQL_DATABASE}" < "$dbdump_file" \
             || { echo "Error restoring nextcloud database"; exit 1; }
+
         else
             echo "Warning: backup of database does not exist. Manual scan of files is required"
             su www-data -s /bin/sh -c 'php /var/www/html/occ files:scan --all'
@@ -184,8 +189,7 @@ backuplog=$(mktemp)
 
         # These commands fail "Could not open input file: occ"
         su www-data -s /bin/sh -c 'php /var/www/html/occ maintenance:mode --off'
-        su www-data -s /bin/sh -c 'php /var/www/html/occ maintenance:data-fingerprint'
-        
+        su www-data -s /bin/sh -c 'php /var/www/html/occ maintenance:data-fingerprint'  
     }
 
     do_init(){
@@ -279,13 +283,12 @@ backuplog=$(mktemp)
     # Log Borg version
     borg --version
 
-    do_validation
+    do_validation || exit $?
 
     if [ "$PARAM1" = "restore" ]; then
         do_restore "$PARAM2" "$PARAM3" "$PARAM4"
 
     else
-        trap 'do_exit ${?}' INT TERM EXIT
         do_init
         do_command borgprune
         do_command maintenancemode on
@@ -296,8 +299,9 @@ backuplog=$(mktemp)
         if [ "$PARAM1" != 'nocheck' ]; then
             # borg check changes nonce file in repo, sync repo afterwards
             # only sync repo to cloud if borg check is good
-            do_command borgcheck && do_command rclone sync
-            do_command rclone check
+            do_command borgcheck \
+                && do_command rclone sync \
+                && do_command rclone check
         fi
     fi
 
